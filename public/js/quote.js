@@ -33,13 +33,13 @@ const coverageDisplay = document.getElementById('coverageDisplay');
 
 const resultCard = document.getElementById('result-card');
 const otpSection = document.getElementById('otp-section');
-const otpSuccess = document.getElementById('otp-success');
+const quoteSection = document.getElementById('quote-section');
 const otpError = document.getElementById('otp-error');
 const otpContact = document.getElementById('otp-contact');
 
 let currentLeadId = null;
 let currentContact = null;
-let currentMethod = null;
+let currentMethod = 'sms';
 
 // --- Populate state dropdown ---
 stateSelect.innerHTML = '<option value="">Select state...</option>' +
@@ -227,6 +227,7 @@ document.querySelectorAll('[data-prev]').forEach(btn => {
 });
 
 // ===== Submit =====
+// Submit → server validates, calculates+saves quote, sends OTP. Quote is held until verified.
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validateStep(4)) return;
@@ -235,6 +236,7 @@ form.addEventListener('submit', async (e) => {
     ['hasDiabetes','hasHeartDisease','hasCancerHistory','familyHistoryHeartDisease'].forEach(k => {
         data[k] = !!document.getElementById(k).checked;
     });
+    data.smsConsent = !!document.getElementById('smsConsent').checked;
     data.coverageAmount = Number(coverageInput.value);
     data.height = Number(data.height);
     data.weight = Number(data.weight);
@@ -248,29 +250,40 @@ form.addEventListener('submit', async (e) => {
         const json = await res.json();
 
         if (!res.ok) {
-            // Map server-side errors to inline messages on the right fields
             clearAllFieldErrors();
             if (Array.isArray(json.details)) {
                 json.details.forEach(({ field, message }) => {
                     setFieldError(field, message || 'Invalid');
                 });
-                // Jump to the step that has the first error
                 const first = json.details[0]?.field;
                 if (first) {
                     const stepEl = document.getElementById(first)?.closest('.step');
                     if (stepEl) showStep(Number(stepEl.dataset.step));
                 }
+            } else if (json.error) {
+                setFieldError('phone', json.error);
             }
             return;
         }
 
+        // OTP already sent server-side. Show the verify panel.
         currentLeadId = json.leadId;
-        renderResult(json.quote);
+        currentContact = json.contact;
+        currentMethod = json.method || 'sms';
 
-        // Phone is required → always use SMS. Email also gets a copy if provided.
-        currentContact = data.phone;
-        currentMethod = 'sms';
-        await requestOtp(currentContact, currentMethod);
+        otpContact.textContent = currentContact;
+        otpError.hidden = true;
+        otpSection.hidden = false;
+        quoteSection.hidden = true;
+        resultCard.hidden = false;
+
+        if (json.demo) {
+            otpError.hidden = false;
+            otpError.innerHTML = '<strong>Demo mode:</strong> OTP code printed to server console (Twilio not configured).';
+        }
+
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('otp-code').focus();
     } catch (err) {
         setFieldError('phone', 'Network error — try again');
     }
@@ -298,9 +311,6 @@ function renderResult(q) {
     ];
     document.getElementById('result-breakdown').innerHTML = items.map(([k, v]) =>
         `<li><span>${k}</span><span>${v}</span></li>`).join('');
-
-    resultCard.hidden = false;
-    resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ===== OTP =====
@@ -345,8 +355,12 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
+
+        // SUCCESS: swap panels — hide verify, show quote
+        if (json.quote) renderResult(json.quote);
         otpSection.hidden = true;
-        otpSuccess.hidden = false;
+        quoteSection.hidden = false;
+        quoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
         otpError.hidden = false;
         otpError.textContent = 'Verification failed. Please try again.';

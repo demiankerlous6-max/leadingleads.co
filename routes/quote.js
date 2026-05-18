@@ -3,9 +3,11 @@ const router = express.Router();
 const { validateQuoteInput, sanitizeQuoteInput } = require('../services/validation');
 const { calculateQuote } = require('../services/quoteEngine');
 const { saveLead } = require('../services/excelService');
+const { sendOtp } = require('../services/otpService');
 
 // POST /api/quote
-// Validates input, calculates a quote, and saves an unverified lead.
+// Validates input, calculates quote (stored on lead), sends OTP.
+// Quote is NOT returned to the client until phone is verified.
 router.post('/', async (req, res, next) => {
     try {
         const { valid, errors } = validateQuoteInput(req.body);
@@ -48,16 +50,28 @@ router.post('/', async (req, res, next) => {
             notes: ''
         });
 
+        // Send OTP immediately — verification gates the quote reveal
+        let otpResult;
+        try {
+            otpResult = await sendOtp({ contact: input.phone, method: 'sms' });
+        } catch (err) {
+            return res.status(502).json({
+                error: 'Could not send verification code. Please try again.',
+                details: err.message
+            });
+        }
+
         res.json({
             leadId,
-            quote,
+            contact: input.phone,
+            method: 'sms',
+            demo: !!otpResult.demo,
+            expiresInMinutes: otpResult.expiresInMinutes,
             customer: {
                 firstName: input.firstName,
-                lastName: input.lastName,
-                email: input.email,
-                phone: input.phone,
                 state: input.state
             }
+            // NOTE: quote intentionally omitted — revealed after OTP verify.
         });
     } catch (err) {
         next(err);

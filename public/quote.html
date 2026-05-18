@@ -199,35 +199,41 @@
 
                 <!-- ============ RESULT PANEL ============ -->
                 <aside class="card result-card" id="result-card" hidden>
-                    <h2>Your Estimated Quote</h2>
-                    <div class="price">
-                        <span class="amount" id="result-monthly">$0</span>
-                        <span class="suffix">/month</span>
-                    </div>
-                    <p id="result-annual" class="muted"></p>
-                    <p>Health class: <strong id="result-class"></strong></p>
-                    <p>BMI: <span id="result-bmi"></span></p>
 
-                    <details class="breakdown">
-                        <summary>How we calculated this</summary>
-                        <ul id="result-breakdown"></ul>
-                    </details>
-
-                    <hr>
+                    <!-- Stage 1: Verify phone (shown immediately after submit) -->
                     <div id="otp-section">
-                        <h3>Verify to lock in your quote</h3>
-                        <p class="muted">We sent a 6-digit code to <strong id="otp-contact"></strong>.</p>
+                        <h2>Verify your phone</h2>
+                        <p class="muted">We just texted a 6-digit code to <strong id="otp-contact"></strong>. Enter it below to see your quote.</p>
                         <div class="form-group">
                             <label for="otp-code">Verification code</label>
-                            <input type="text" id="otp-code" maxlength="6" inputmode="numeric" pattern="\d{6}">
+                            <input type="text" id="otp-code" maxlength="6" inputmode="numeric" pattern="\d{6}" placeholder="------" style="font-size:20px; text-align:center; letter-spacing:8px; font-family:monospace;">
                         </div>
                         <div id="otp-error" class="alert alert-error" hidden></div>
-                        <button class="btn btn-primary btn-block" id="otp-verify-btn">Verify Code</button>
+                        <button class="btn btn-primary btn-block" id="otp-verify-btn">Verify & Show My Quote</button>
                         <button class="btn btn-link" id="otp-resend-btn">Resend code</button>
                     </div>
 
-                    <div id="otp-success" class="alert alert-success" hidden>
-                        <strong>Verified!</strong> An agent will reach out within 1 business day.
+                    <!-- Stage 2: Quote display (revealed only after successful OTP verify) -->
+                    <div id="quote-section" hidden>
+                        <div class="alert alert-success" style="margin-bottom:16px;">
+                            <strong>Verified!</strong> Here's your estimated quote.
+                        </div>
+                        <h2>Your Estimated Quote</h2>
+                        <div class="price">
+                            <span class="amount" id="result-monthly">$0</span>
+                            <span class="suffix">/month</span>
+                        </div>
+                        <p id="result-annual" class="muted"></p>
+                        <p>Health class: <strong id="result-class"></strong></p>
+                        <p>BMI: <span id="result-bmi"></span></p>
+
+                        <details class="breakdown">
+                            <summary>How we calculated this</summary>
+                            <ul id="result-breakdown"></ul>
+                        </details>
+
+                        <hr>
+                        <p class="muted">A licensed agent will reach out within 1 business day to discuss your options.</p>
                     </div>
                 </aside>
             </div>

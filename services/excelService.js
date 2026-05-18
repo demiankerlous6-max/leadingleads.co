@@ -88,6 +88,25 @@ async function updateLeadVerification(leadId, method) {
     return updated;
 }
 
+async function getLeadById(leadId) {
+    const wb = await loadWorkbook();
+    const sheet = wb.getWorksheet('Leads');
+    let result = null;
+
+    sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        if (row.getCell('leadId').value === leadId) {
+            const lead = {};
+            LEAD_HEADERS.forEach((h, i) => {
+                lead[h] = row.getCell(i + 1).value;
+            });
+            result = lead;
+        }
+    });
+
+    return result;
+}
+
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
     const wb = await loadWorkbook();
     const sheet = wb.getWorksheet('Leads');
@@ -185,6 +204,7 @@ module.exports = {
     initializeWorkbook,
     saveLead,
     updateLeadVerification,
+    getLeadById,
     listLeads,
     saveOtp,
     findActiveOtp,
