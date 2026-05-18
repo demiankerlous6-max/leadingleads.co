@@ -263,6 +263,32 @@ img { max-width: 100%; }
     font-weight: 500;
     margin-top: 4px;
 }
+.consent-box {
+    background: var(--gray-50);
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 8px;
+}
+.consent-label {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px !important;
+    color: var(--gray-700) !important;
+    line-height: 1.5;
+    cursor: pointer;
+    font-weight: 400 !important;
+}
+.consent-label input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+.consent-label a {
+    text-decoration: underline;
+}
 
 /* ============ Alerts ============ */
 .alert {

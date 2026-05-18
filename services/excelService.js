@@ -14,7 +14,8 @@ const LEAD_HEADERS = [
     'height', 'weight', 'bmi', 'smokingStatus', 'healthRating',
     'hasDiabetes', 'hasHeartDisease', 'hasCancerHistory', 'familyHistoryHeartDisease',
     'policyType', 'coverageAmount', 'monthlyPremium', 'annualPremium', 'healthClass',
-    'verified', 'verificationMethod', 'source', 'notes'
+    'verified', 'verificationMethod', 'smsConsent', 'smsConsentTimestamp',
+    'source', 'notes'
 ];
 
 const OTP_HEADERS = [

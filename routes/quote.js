@@ -42,6 +42,8 @@ router.post('/', async (req, res, next) => {
             healthClass: quote.healthClass,
             verified: false,
             verificationMethod: '',
+            smsConsent: input.smsConsent,
+            smsConsentTimestamp: input.smsConsentTimestamp,
             source: req.body.source || 'website',
             notes: ''
         });

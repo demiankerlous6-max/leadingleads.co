@@ -182,7 +182,7 @@ function validateStep(n) {
         }
     }
 
-    // --- Step 4 specific: phone format + email format if provided ---
+    // --- Step 4 specific: phone format + email format if provided + SMS consent ---
     if (n === 4) {
         const phone = document.getElementById('phone').value.trim();
         if (phone) {
@@ -203,6 +203,13 @@ function validateStep(n) {
             } else if (/^(test|admin|fake|asdf|noreply)@/i.test(email)) {
                 setFieldError('email', 'Use a real email'); valid = false;
             }
+        }
+
+        // SMS consent must be checked (TCPA / Twilio requirement)
+        const consent = document.getElementById('smsConsent');
+        if (!consent.checked) {
+            setFieldError('smsConsent', 'You must agree to receive SMS to continue');
+            valid = false;
         }
     }
 

@@ -175,6 +175,11 @@ function validateQuoteInput(data) {
         }
     }
 
+    // --- SMS opt-in consent (TCPA requirement) ---
+    if (data.smsConsent !== true && data.smsConsent !== 'on' && data.smsConsent !== 'true') {
+        push('smsConsent', 'You must agree to receive SMS to continue');
+    }
+
     return { valid: errors.length === 0, errors };
 }
 
@@ -198,7 +203,9 @@ function sanitizeQuoteInput(data) {
         policyType: String(data.policyType).toLowerCase(),
         coverageAmount: Number(data.coverageAmount),
         email: data.email ? String(data.email).trim().toLowerCase() : '',
-        phone: data.phone ? String(data.phone).trim() : ''
+        phone: data.phone ? String(data.phone).trim() : '',
+        smsConsent: true,
+        smsConsentTimestamp: new Date().toISOString()
     };
 }
 

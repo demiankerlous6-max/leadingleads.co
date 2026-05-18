@@ -89,7 +89,7 @@ async function sendOtp({ contact, method }) {
             return { sent: true, demo: true, expiresInMinutes: OTP_EXPIRY_MINUTES };
         }
         await client.messages.create({
-            body: `Your LeadingLeads.co verification code is ${code}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
+            body: `LeadingLeads.co: Your verification code is ${code}. It expires in ${OTP_EXPIRY_MINUTES} min. Reply STOP to opt out, HELP for help. Msg&data rates may apply.`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: contact
         });
