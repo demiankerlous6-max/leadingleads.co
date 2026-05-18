@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Your Quote — LeadingLeads.co</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-inner">
+            <a href="/" class="logo">Leading<span>Leads</span>.co</a>
+            <nav>
+                <a href="/policies.html">Policies</a>
+                <a href="/quote.html" class="active">Get a Quote</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>Your personalized life insurance quote</h1>
+            <p class="lead">8 short questions. No medical exam to view your estimate.</p>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="quote-layout">
+                <!-- ============ FORM ============ -->
+                <form id="quote-form" class="card" novalidate>
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill" style="width: 25%"></div>
+                    </div>
+
+                    <!-- Step 1: About You -->
+                    <fieldset class="step active" data-step="1">
+                        <legend>Step 1 of 4 · About you</legend>
+
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label for="firstName">First name</label>
+                                <input type="text" id="firstName" name="firstName" required maxlength="50" minlength="2">
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last name</label>
+                                <input type="text" id="lastName" name="lastName" required maxlength="50" minlength="2">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dateOfBirth">Date of birth</label>
+                            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                            <small class="hint">You must be between 18 and 85 years old.</small>
+                        </div>
+
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label for="gender">Gender</label>
+                                <select id="gender" name="gender" required>
+                                    <option value="">Select...</option>
+                                    <option value="female">Female</option>
+                                    <option value="male">Male</option>
+                                    <option value="other">Other / Prefer not to say</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="state">State</label>
+                                <select id="state" name="state" required></select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="zipCode">ZIP code <span class="optional">(optional)</span></label>
+                            <input type="text" id="zipCode" name="zipCode" maxlength="10" placeholder="12345">
+                        </div>
+
+                        <div class="step-actions">
+                            <button type="button" class="btn btn-primary" data-next="2">Continue</button>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 2: Health -->
+                    <fieldset class="step" data-step="2">
+                        <legend>Step 2 of 4 · Health</legend>
+
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label for="height">Height (inches)</label>
+                                <input type="number" id="height" name="height" required min="48" max="90" step="1">
+                                <small class="hint">4'0" = 48 in, 5'10" = 70 in, 6'6" = 78 in</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="weight">Weight (lbs)</label>
+                                <input type="number" id="weight" name="weight" required min="75" max="700" step="1">
+                                <small class="hint">Between 75 and 700 lbs.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label for="smokingStatus">Smoking status</label>
+                                <select id="smokingStatus" name="smokingStatus" required>
+                                    <option value="">Select...</option>
+                                    <option value="never">Never smoked</option>
+                                    <option value="former">Former smoker (quit 1+ year ago)</option>
+                                    <option value="current">Current smoker</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="healthRating">Overall health</label>
+                                <select id="healthRating" name="healthRating" required>
+                                    <option value="">Select...</option>
+                                    <option value="excellent">Excellent</option>
+                                    <option value="good">Good</option>
+                                    <option value="average">Average</option>
+                                    <option value="poor">Poor</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <fieldset class="conditions">
+                            <legend>Pre-existing conditions (check all that apply)</legend>
+                            <label class="check"><input type="checkbox" id="hasDiabetes" name="hasDiabetes"> Diabetes</label>
+                            <label class="check"><input type="checkbox" id="hasHeartDisease" name="hasHeartDisease"> Heart disease</label>
+                            <label class="check"><input type="checkbox" id="hasCancerHistory" name="hasCancerHistory"> Cancer history</label>
+                            <label class="check"><input type="checkbox" id="familyHistoryHeartDisease" name="familyHistoryHeartDisease"> Family history of heart disease</label>
+                        </fieldset>
+
+                        <div class="step-actions">
+                            <button type="button" class="btn btn-secondary" data-prev="1">Back</button>
+                            <button type="button" class="btn btn-primary" data-next="3">Continue</button>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 3: Policy -->
+                    <fieldset class="step" data-step="3">
+                        <legend>Step 3 of 4 · Coverage</legend>
+
+                        <div class="form-group">
+                            <label for="policyType">Policy type</label>
+                            <select id="policyType" name="policyType" required>
+                                <option value="">Select...</option>
+                                <option value="term-10">10-Year Term Life</option>
+                                <option value="term-20">20-Year Term Life (most popular)</option>
+                                <option value="term-30">30-Year Term Life</option>
+                                <option value="whole">Whole Life (permanent)</option>
+                                <option value="universal">Universal Life (flexible)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="coverageAmount">Coverage amount: <strong id="coverageDisplay">$500,000</strong></label>
+                            <input type="range" id="coverageAmount" name="coverageAmount" min="25000" max="2000000" step="25000" value="500000">
+                            <div class="range-labels">
+                                <span>$25K</span>
+                                <span>$2M</span>
+                            </div>
+                            <small class="hint">A common rule of thumb is 10× your annual income.</small>
+                        </div>
+
+                        <div class="step-actions">
+                            <button type="button" class="btn btn-secondary" data-prev="2">Back</button>
+                            <button type="button" class="btn btn-primary" data-next="4">Continue</button>
+                        </div>
+                    </fieldset>
+
+                    <!-- Step 4: Contact -->
+                    <fieldset class="step" data-step="4">
+                        <legend>Step 4 of 4 · Contact</legend>
+                        <p class="hint">We'll text you a 6-digit code to verify your phone.</p>
+
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="tel" id="phone" name="phone" required placeholder="+1 555-123-4567">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email <span class="optional">(optional)</span></label>
+                            <input type="email" id="email" name="email" placeholder="you@example.com">
+                        </div>
+
+                        <div class="step-actions">
+                            <button type="button" class="btn btn-secondary" data-prev="3">Back</button>
+                            <button type="submit" class="btn btn-primary">Calculate My Quote</button>
+                        </div>
+                    </fieldset>
+                </form>
+
+                <!-- ============ RESULT PANEL ============ -->
+                <aside class="card result-card" id="result-card" hidden>
+                    <h2>Your Estimated Quote</h2>
+                    <div class="price">
+                        <span class="amount" id="result-monthly">$0</span>
+                        <span class="suffix">/month</span>
+                    </div>
+                    <p id="result-annual" class="muted"></p>
+                    <p>Health class: <strong id="result-class"></strong></p>
+                    <p>BMI: <span id="result-bmi"></span></p>
+
+                    <details class="breakdown">
+                        <summary>How we calculated this</summary>
+                        <ul id="result-breakdown"></ul>
+                    </details>
+
+                    <hr>
+                    <div id="otp-section">
+                        <h3>Verify to lock in your quote</h3>
+                        <p class="muted">We sent a 6-digit code to <strong id="otp-contact"></strong>.</p>
+                        <div class="form-group">
+                            <label for="otp-code">Verification code</label>
+                            <input type="text" id="otp-code" maxlength="6" inputmode="numeric" pattern="\d{6}">
+                        </div>
+                        <div id="otp-error" class="alert alert-error" hidden></div>
+                        <button class="btn btn-primary btn-block" id="otp-verify-btn">Verify Code</button>
+                        <button class="btn btn-link" id="otp-resend-btn">Resend code</button>
+                    </div>
+
+                    <div id="otp-success" class="alert alert-success" hidden>
+                        <strong>Verified!</strong> An agent will reach out within 1 business day.
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 LeadingLeads.co</p>
+        </div>
+    </footer>
+
+    <script src="/js/quote.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+// Input validation for LeadingLeads.co quote and lead forms
+// Returns structured errors: [{ field: 'fieldName', message: 'Short hint' }]
+
+const US_STATES = [
+    'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA',
+    'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+    'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
+    'VA','WA','WV','WI','WY','DC'
+];
+
+const VALID_GENDERS = ['male', 'female', 'other'];
+const VALID_SMOKING = ['never', 'former', 'current'];
+const VALID_HEALTH = ['excellent', 'good', 'average', 'poor'];
+const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal'];
+
+// Human sanity limits
+const ABSOLUTE_MAX_AGE = 120;
+const ELIGIBLE_MIN_AGE = 18;
+const ELIGIBLE_MAX_AGE = 85;
+const MIN_HEIGHT_INCHES = 48;
+const MAX_HEIGHT_INCHES = 90;
+const MIN_WEIGHT_LBS = 75;
+const MAX_WEIGHT_LBS = 700;
+const MIN_BMI = 12;
+const MAX_BMI = 80;
+
+function isPlainObject(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+
+function calculateAge(dobStr) {
+    const dob = new Date(dobStr);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+}
+
+function isJunkName(s) {
+    if (!/[A-Za-z]/.test(s)) return true;
+    if (/^(.)\1+$/.test(s.replace(/\s/g, ''))) return true;
+    if (/^[^A-Za-z\s'\-\.]+$/.test(s)) return true;
+    return false;
+}
+
+function isJunkPhone(digits) {
+    if (/^(.)\1+$/.test(digits)) return true;
+    if (/^0+$/.test(digits)) return true;
+    if (digits === '1234567890' || digits === '0123456789') return true;
+    const last10 = digits.slice(-10);
+    if (last10.length === 10 && /^[01]/.test(last10)) return true;
+    return false;
+}
+
+function validateQuoteInput(data) {
+    const errors = [];
+    const push = (field, message) => errors.push({ field, message });
+
+    if (!isPlainObject(data)) {
+        return { valid: false, errors: [{ field: '_form', message: 'Invalid request' }] };
+    }
+
+    // --- Names ---
+    const fn = (data.firstName || '').trim();
+    if (!fn) push('firstName', 'Required');
+    else if (fn.length < 2) push('firstName', 'Too short');
+    else if (fn.length > 50) push('firstName', 'Too long');
+    else if (isJunkName(fn)) push('firstName', 'Not a real name');
+
+    const ln = (data.lastName || '').trim();
+    if (!ln) push('lastName', 'Required');
+    else if (ln.length < 2) push('lastName', 'Too short');
+    else if (ln.length > 50) push('lastName', 'Too long');
+    else if (isJunkName(ln)) push('lastName', 'Not a real name');
+
+    // --- Date of birth ---
+    if (!data.dateOfBirth) {
+        push('dateOfBirth', 'Required');
+    } else {
+        const dob = new Date(data.dateOfBirth);
+        const now = new Date();
+        if (isNaN(dob.getTime())) {
+            push('dateOfBirth', 'Invalid date');
+        } else if (dob > now) {
+            push('dateOfBirth', 'Cannot be in the future');
+        } else {
+            const age = calculateAge(data.dateOfBirth);
+            const earliestPossibleYear = now.getFullYear() - ABSOLUTE_MAX_AGE;
+            if (dob.getFullYear() < earliestPossibleYear || age > ABSOLUTE_MAX_AGE) {
+                push('dateOfBirth', `Age can't exceed ${ABSOLUTE_MAX_AGE}`);
+            } else if (age < ELIGIBLE_MIN_AGE) {
+                push('dateOfBirth', `Must be ${ELIGIBLE_MIN_AGE}+`);
+            } else if (age > ELIGIBLE_MAX_AGE) {
+                push('dateOfBirth', `Must be ${ELIGIBLE_MAX_AGE} or younger`);
+            }
+        }
+    }
+
+    // --- Gender ---
+    if (!data.gender || !VALID_GENDERS.includes(String(data.gender).toLowerCase())) {
+        push('gender', 'Required');
+    }
+
+    // --- Location ---
+    if (!data.state || !US_STATES.includes(String(data.state).toUpperCase())) {
+        push('state', 'Required');
+    }
+    if (data.zipCode && !/^\d{5}(-\d{4})?$/.test(data.zipCode)) {
+        push('zipCode', 'Invalid ZIP');
+    }
+
+    // --- Health: height/weight/BMI ---
+    const h = Number(data.height);
+    const w = Number(data.weight);
+    if (!h || isNaN(h)) push('height', 'Required');
+    else if (h < MIN_HEIGHT_INCHES || h > MAX_HEIGHT_INCHES) push('height', `Must be ${MIN_HEIGHT_INCHES}–${MAX_HEIGHT_INCHES} in`);
+
+    if (!w || isNaN(w)) push('weight', 'Required');
+    else if (w < MIN_WEIGHT_LBS || w > MAX_WEIGHT_LBS) push('weight', `Must be ${MIN_WEIGHT_LBS}–${MAX_WEIGHT_LBS} lbs`);
+
+    if (h >= MIN_HEIGHT_INCHES && h <= MAX_HEIGHT_INCHES &&
+        w >= MIN_WEIGHT_LBS && w <= MAX_WEIGHT_LBS) {
+        const bmi = (w / (h * h)) * 703;
+        if (bmi < MIN_BMI || bmi > MAX_BMI) {
+            push('weight', 'Not realistic for height');
+        }
+    }
+
+    if (!data.smokingStatus || !VALID_SMOKING.includes(String(data.smokingStatus).toLowerCase())) {
+        push('smokingStatus', 'Required');
+    }
+    if (!data.healthRating || !VALID_HEALTH.includes(String(data.healthRating).toLowerCase())) {
+        push('healthRating', 'Required');
+    }
+
+    const boolFields = ['hasDiabetes', 'hasHeartDisease', 'hasCancerHistory', 'familyHistoryHeartDisease'];
+    boolFields.forEach(f => {
+        if (data[f] !== undefined && typeof data[f] !== 'boolean') {
+            push(f, 'Invalid value');
+        }
+    });
+
+    // --- Policy ---
+    if (!data.policyType || !VALID_POLICY_TYPES.includes(String(data.policyType).toLowerCase())) {
+        push('policyType', 'Required');
+    }
+    const coverage = Number(data.coverageAmount);
+    if (!coverage || isNaN(coverage) || coverage < 25000 || coverage > 5000000) {
+        push('coverageAmount', 'Must be $25k–$5M');
+    } else if (coverage % 1000 !== 0) {
+        push('coverageAmount', 'Must be in $1k increments');
+    }
+
+    // --- Contact: phone REQUIRED, email OPTIONAL ---
+    if (!data.phone) {
+        push('phone', 'Required');
+    } else {
+        const phone = String(data.phone).trim();
+        const digits = phone.replace(/\D/g, '');
+        if (!/^\+?1?[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(phone)) {
+            push('phone', 'Invalid US format');
+        } else if (digits.length < 10 || digits.length > 11) {
+            push('phone', 'Must have 10 digits');
+        } else if (isJunkPhone(digits)) {
+            push('phone', 'Not a real number');
+        }
+    }
+    if (data.email) {
+        const email = String(data.email).trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            push('email', 'Invalid email');
+        } else if (email.length > 254) {
+            push('email', 'Too long');
+        } else if (/^(test|admin|fake|asdf|noreply)@/i.test(email)) {
+            push('email', 'Use a real email');
+        }
+    }
+
+    return { valid: errors.length === 0, errors };
+}
+
+function sanitizeQuoteInput(data) {
+    return {
+        firstName: String(data.firstName).trim(),
+        lastName: String(data.lastName).trim(),
+        dateOfBirth: data.dateOfBirth,
+        age: calculateAge(data.dateOfBirth),
+        gender: String(data.gender).toLowerCase(),
+        state: String(data.state).toUpperCase(),
+        zipCode: data.zipCode || '',
+        height: Number(data.height),
+        weight: Number(data.weight),
+        smokingStatus: String(data.smokingStatus).toLowerCase(),
+        healthRating: String(data.healthRating).toLowerCase(),
+        hasDiabetes: Boolean(data.hasDiabetes),
+        hasHeartDisease: Boolean(data.hasHeartDisease),
+        hasCancerHistory: Boolean(data.hasCancerHistory),
+        familyHistoryHeartDisease: Boolean(data.familyHistoryHeartDisease),
+        policyType: String(data.policyType).toLowerCase(),
+        coverageAmount: Number(data.coverageAmount),
+        email: data.email ? String(data.email).trim().toLowerCase() : '',
+        phone: data.phone ? String(data.phone).trim() : ''
+    };
+}
+
+module.exports = {
+    validateQuoteInput,
+    sanitizeQuoteInput,
+    calculateAge,
+    US_STATES,
+    LIMITS: {
+        ABSOLUTE_MAX_AGE, ELIGIBLE_MIN_AGE, ELIGIBLE_MAX_AGE,
+        MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES,
+        MIN_WEIGHT_LBS, MAX_WEIGHT_LBS,
+        MIN_BMI, MAX_BMI
+    }
+};
