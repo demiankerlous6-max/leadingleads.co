@@ -1,5 +1,4 @@
-// Data persistence — Leads in Google Sheets, OTP codes in memory.
-// Same function names as before so routes don't need changes.
+// Data persistence — Leads in Google Sheets (simplified schema), OTP codes in memory.
 
 const { v4: uuidv4 } = require('uuid');
 const ExcelJS = require('exceljs');
@@ -12,48 +11,60 @@ const {
     COLUMNS
 } = require('./sheetsClient');
 
-// ============== INITIALIZATION ==============
+// =================== Display formatters ===================
 
+const POLICY_LABELS = {
+    'term-10':   '10-Year Term',
+    'term-20':   '20-Year Term',
+    'term-30':   '30-Year Term',
+    'whole':     'Whole Life',
+    'universal': 'Universal Life'
+};
+
+function title(s) {
+    if (!s) return '';
+    return String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase();
+}
+
+function buildConditionsString(lead) {
+    const list = [];
+    if (lead.hasDiabetes)               list.push('Diabetes');
+    if (lead.hasHeartDisease)           list.push('Heart disease');
+    if (lead.hasCancerHistory)          list.push('Cancer history');
+    if (lead.familyHistoryHeartDisease) list.push('Family heart disease');
+    return list.length ? list.join(', ') : 'None';
+}
+
+// =================== INITIALIZATION ===================
 async function initializeSchema() {
     await initializeSheet();
     console.log('[db] Google Sheets ready as the leads database.');
 }
 
-// ============== LEADS ==============
-
+// =================== LEADS ===================
 async function saveLead(lead) {
     const leadId = uuidv4();
     const row = {
         leadId,
-        createdAt: new Date().toISOString(),
-        firstName: lead.firstName,
-        lastName: lead.lastName,
+        date: new Date().toISOString(),
+        name: [lead.firstName, lead.lastName].filter(Boolean).join(' '),
+        phone: lead.phone || '',
         email: lead.email || '',
-        phone: lead.phone,
-        dateOfBirth: lead.dateOfBirth,
         age: lead.age,
-        gender: lead.gender,
-        state: lead.state,
-        zipCode: lead.zipCode || '',
+        gender: title(lead.gender),
+        state: (lead.state || '').toUpperCase(),
         height: lead.height,
         weight: lead.weight,
         bmi: lead.bmi,
-        smokingStatus: lead.smokingStatus,
-        healthRating: lead.healthRating,
-        hasDiabetes: !!lead.hasDiabetes,
-        hasHeartDisease: !!lead.hasHeartDisease,
-        hasCancerHistory: !!lead.hasCancerHistory,
-        familyHistoryHeartDisease: !!lead.familyHistoryHeartDisease,
-        policyType: lead.policyType,
-        coverageAmount: lead.coverageAmount,
+        smoking: title(lead.smokingStatus),
+        health: title(lead.healthRating),
+        conditions: buildConditionsString(lead),
+        policyType: POLICY_LABELS[lead.policyType] || lead.policyType,
+        coverage: lead.coverageAmount,
         monthlyPremium: lead.monthlyPremium,
         annualPremium: lead.annualPremium,
-        healthClass: lead.healthClass,
-        verified: !!lead.verified,
-        verificationMethod: lead.verificationMethod || '',
-        smsConsent: !!lead.smsConsent,
-        smsConsentTimestamp: lead.smsConsentTimestamp || '',
-        source: lead.source || 'website',
+        healthClass: lead.healthClass || '',
+        verified: lead.verified ? 'Yes' : 'No',
         notes: lead.notes || ''
     };
     await appendRow(row);
@@ -63,36 +74,26 @@ async function saveLead(lead) {
 async function updateLeadVerification(leadId, method) {
     const row = await findRowByLeadId(leadId);
     if (!row) return false;
-    await updateRowFields(row._rowNumber, {
-        verified: true,
-        verificationMethod: method
-    });
+    await updateRowFields(row._rowNumber, { verified: 'Yes' });
     return true;
 }
 
 async function getLeadById(leadId) {
     const row = await findRowByLeadId(leadId);
     if (!row) return null;
-    // Strip the internal _rowNumber before returning
     const { _rowNumber, ...lead } = row;
     return lead;
 }
 
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
     const all = await getAllRows();
-    const filtered = verifiedOnly ? all.filter(r => r.verified === true) : all;
-    // Most recent first; sheets append at the bottom, so reverse
+    const filtered = verifiedOnly ? all.filter(r => r.verified === true || r.verified === 'Yes') : all;
     return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
 }
 
-// ============== OTP (in-memory, ephemeral) ==============
-// OTP codes live 10 minutes. Storing them in memory is fine:
-//  - No Sheets API write per OTP request (avoids rate limits)
-//  - On server restart any in-flight codes are lost — user just clicks "Resend"
+// =================== OTP (in-memory) ===================
+const otpStore = new Map();
 
-const otpStore = new Map(); // contact -> { otpId, codeHash, expiresAt, verified, attempts, method, createdAt }
-
-// Periodically clean up expired entries so the Map doesn't grow forever
 setInterval(() => {
     const now = new Date();
     for (const [contact, entry] of otpStore.entries()) {
@@ -133,35 +134,25 @@ async function findActiveOtp(contact) {
 
 async function incrementOtpAttempts(otpId) {
     for (const entry of otpStore.values()) {
-        if (entry.otpId === otpId) {
-            entry.attempts += 1;
-            return;
-        }
+        if (entry.otpId === otpId) { entry.attempts += 1; return; }
     }
 }
 
 async function markOtpVerified(otpId) {
     for (const entry of otpStore.values()) {
-        if (entry.otpId === otpId) {
-            entry.verified = true;
-            return;
-        }
+        if (entry.otpId === otpId) { entry.verified = true; return; }
     }
 }
 
-// ============== EXCEL EXPORT (snapshot of the Sheets data) ==============
-
+// =================== EXCEL EXPORT ===================
 async function exportLeadsToExcelBuffer({ verifiedOnly = false } = {}) {
     const leads = await listLeads({ limit: 100000, verifiedOnly });
     const wb = new ExcelJS.Workbook();
     wb.creator = 'LeadingLeads.co';
     wb.created = new Date();
-
     const sheet = wb.addWorksheet('Leads');
-    sheet.columns = COLUMNS.map(h => ({ header: h, key: h, width: 18 }));
-    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
-
+    sheet.columns = COLUMNS.filter(c => c !== 'leadId').map(h => ({ header: h, key: h, width: 18 }));
+    sheet.getRow(1).font = { bold: true };
     leads.forEach(lead => sheet.addRow(lead));
     return await wb.xlsx.writeBuffer();
 }

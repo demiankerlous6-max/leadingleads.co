@@ -294,23 +294,6 @@ function renderResult(q) {
     document.getElementById('result-annual').textContent = `≈ ${formatMoney(q.annualPremium.toFixed(2))} per year`;
     document.getElementById('result-class').textContent = q.healthClass;
     document.getElementById('result-bmi').textContent = q.bmi;
-
-    const b = q.breakdown;
-    const items = [
-        ['Base rate per $1k', `$${b.baseRatePer1k.toFixed(2)}`],
-        ['Coverage', `${b.coverageInThousands.toLocaleString()} ($1k units)`],
-        ['Policy type factor', `× ${b.policyMultiplier}`],
-        ['Gender factor', `× ${b.genderMultiplier}`],
-        ['Smoking factor', `× ${b.smokingMultiplier}`],
-        ['Health factor', `× ${b.healthMultiplier}`],
-        ['State factor', `× ${b.stateMultiplier}`],
-        ['BMI factor', `× ${b.bmiMultiplier}`],
-        ['Conditions factor', `× ${b.conditionsMultiplier}`],
-        ['Volume discount', `× ${b.coverageDiscount}`],
-        ['Total multiplier', `<strong>× ${b.totalMultiplier}</strong>`]
-    ];
-    document.getElementById('result-breakdown').innerHTML = items.map(([k, v]) =>
-        `<li><span>${k}</span><span>${v}</span></li>`).join('');
 }
 
 // ===== OTP =====
