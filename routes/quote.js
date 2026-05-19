@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { validateQuoteInput, sanitizeQuoteInput } = require('../services/validation');
 const { calculateQuote } = require('../services/quoteEngine');
-const { saveLead } = require('../services/excelService');
+const { saveLead } = require('../services/dataStore');
 const { sendOtp } = require('../services/otpService');
 
 // POST /api/quote

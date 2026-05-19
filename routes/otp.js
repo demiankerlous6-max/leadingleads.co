@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { sendOtp, verifyOtp } = require('../services/otpService');
-const { updateLeadVerification, getLeadById } = require('../services/excelService');
+const { updateLeadVerification, getLeadById } = require('../services/dataStore');
 const { calculateQuote } = require('../services/quoteEngine');
 
 // POST /api/otp/send  { contact, method }

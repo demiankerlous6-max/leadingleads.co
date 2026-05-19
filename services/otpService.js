@@ -8,7 +8,7 @@ const {
     findActiveOtp,
     incrementOtpAttempts,
     markOtpVerified
-} = require('./excelService');
+} = require('./dataStore');
 
 const OTP_LENGTH = Number(process.env.OTP_LENGTH || 6);
 const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES || 10);

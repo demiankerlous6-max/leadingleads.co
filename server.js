@@ -10,7 +10,7 @@ const quoteRoutes = require('./routes/quote');
 const otpRoutes = require('./routes/otp');
 const leadRoutes = require('./routes/leads');
 const policyRoutes = require('./routes/policies');
-const { initializeWorkbook } = require('./services/excelService');
+const { initializeSchema } = require('./services/dataStore');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,10 +69,10 @@ app.use((err, req, res, next) => {
 // Start server
 (async () => {
     try {
-        await initializeWorkbook();
+        await initializeSchema();
         app.listen(PORT, () => {
             console.log(`\nLeadingLeads.co server running on http://localhost:${PORT}`);
-            console.log(`Excel database: ${process.env.EXCEL_FILE_PATH || './data/leadingleads.xlsx'}`);
+            console.log(`Database: PostgreSQL`);
         });
     } catch (err) {
         console.error('Failed to start server:', err);
