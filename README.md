@@ -28,18 +28,21 @@ LeadingLeads.co/
 ├── services/
 │   ├── validation.js     # input validation rules
 │   ├── quoteEngine.js    # premium calculation algorithm
-│   ├── excelService.js   # Excel read/write
-│   └── otpService.js     # email + SMS OTP
+│   ├── sheetsClient.js   # Google Sheets API client (auth + raw operations)
+│   ├── dataStore.js      # leads (Sheets) + OTP (in-memory) data layer
+│   └── otpService.js     # SMS OTP via Twilio
 ├── policies/
 │   └── policies.js       # product catalog
 ├── public/               # frontend
 │   ├── index.html
 │   ├── quote.html
 │   ├── policies.html
+│   ├── privacy.html      # Privacy Policy (TCPA / Twilio compliance)
+│   ├── terms.html        # Terms of Service
 │   ├── css/style.css
 │   └── js/
-└── data/
-    └── leadingleads.xlsx # auto-created on first run
+└── scripts/
+    └── test-twilio.js    # CLI: verify Twilio credentials work
 ```
 
 ## Setup
@@ -57,10 +60,10 @@ LeadingLeads.co/
    cp .env.example .env
    ```
    Edit `.env` and fill in:
-   - **Email**: Gmail App Password (https://myaccount.google.com/apppasswords), or SendGrid/Mailgun SMTP
-   - **Twilio**: Account SID, Auth Token, and a Twilio phone number from https://console.twilio.com
+   - **Twilio**: see `TWILIO_SETUP.md` — Account SID, Auth Token, and a Twilio phone number
+   - **Google Sheets**: see `GOOGLE_SHEETS_SETUP.md` — Sheet ID, service account email, and private key
 
-   You can leave credentials blank for **demo mode** — OTP codes will print to the server console instead of being sent.
+   You can leave Twilio credentials blank for **demo mode** — OTP codes will print to the server console instead of being sent. Google Sheets credentials are required for the data layer to work.
 
 4. **Run the server**:
    ```bash
