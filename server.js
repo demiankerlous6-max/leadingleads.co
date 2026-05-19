@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
         await initializeSchema();
         app.listen(PORT, () => {
             console.log(`\nLeadingLeads.co server running on http://localhost:${PORT}`);
-            console.log(`Database: PostgreSQL`);
+            console.log(`Database: Google Sheets (${process.env.GOOGLE_SHEETS_ID})`);
         });
     } catch (err) {
         console.error('Failed to start server:', err);
