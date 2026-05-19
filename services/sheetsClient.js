@@ -8,23 +8,65 @@ const SHEET_NAME = process.env.GOOGLE_SHEETS_TAB_NAME || 'Leads';
 
 let sheetsClient = null;
 
+function parsePrivateKey(raw) {
+    if (!raw) return '';
+    let key = raw.trim();
+    // Strip surrounding quotes that some hosts wrap around env vars
+    if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+        key = key.slice(1, -1);
+    }
+    // Convert literal \n escape sequences into real newlines
+    key = key.replace(/\\n/g, '\n');
+    // Make sure it ends with a newline (some libs require it)
+    if (!key.endsWith('\n')) key += '\n';
+    return key;
+}
+
+function getCredentials() {
+    // Preferred: GOOGLE_SERVICE_ACCOUNT_JSON contains the entire JSON file as a single string.
+    const jsonBlob = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    if (jsonBlob) {
+        try {
+            const parsed = JSON.parse(jsonBlob);
+            if (!parsed.client_email || !parsed.private_key) {
+                throw new Error('JSON is missing client_email or private_key.');
+            }
+            return {
+                client_email: parsed.client_email,
+                private_key: parsePrivateKey(parsed.private_key)
+            };
+        } catch (err) {
+            throw new Error(
+                'GOOGLE_SERVICE_ACCOUNT_JSON is set but could not be parsed as JSON. ' +
+                'Make sure you pasted the complete contents of the downloaded service account JSON file. ' +
+                'Underlying error: ' + err.message
+            );
+        }
+    }
+
+    // Fallback: separate email + private key env vars
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const key = parsePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
+    if (!email || !key) {
+        throw new Error(
+            'Missing Google credentials. Set either GOOGLE_SERVICE_ACCOUNT_JSON (preferred) ' +
+            'or both GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.'
+        );
+    }
+    return { client_email: email, private_key: key };
+}
+
 function getClient() {
     if (sheetsClient) return sheetsClient;
 
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || '';
-    // Render and many hosts escape newlines as literal "\n" — convert them back.
-    key = key.replace(/\\n/g, '\n');
-
-    if (!email || !key) {
-        throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY must be set.');
-    }
     if (!SHEET_ID) {
         throw new Error('GOOGLE_SHEETS_ID must be set.');
     }
 
+    const creds = getCredentials();
+
     const auth = new google.auth.GoogleAuth({
-        credentials: { client_email: email, private_key: key },
+        credentials: creds,
         scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
 
