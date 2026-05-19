@@ -85,21 +85,59 @@ const COLUMNS = [
     'source', 'notes'
 ];
 
-// Make sure the tab exists and has the header row. Safe to run on every startup.
+// Per-column formatting rules. Numeric/date columns get explicit formats;
+// the phone column is forced to TEXT so leading + and 0 aren't stripped.
+const COLUMN_FORMATS = {
+    leadId:                     { numberFormat: { type: 'TEXT' }, width: 220 },
+    createdAt:                  { numberFormat: { type: 'DATE_TIME', pattern: 'yyyy-mm-dd hh:mm' }, width: 140 },
+    firstName:                  { width: 110 },
+    lastName:                   { width: 110 },
+    email:                      { width: 200 },
+    phone:                      { numberFormat: { type: 'TEXT' }, width: 140 },
+    dateOfBirth:                { numberFormat: { type: 'DATE', pattern: 'yyyy-mm-dd' }, width: 110 },
+    age:                        { numberFormat: { type: 'NUMBER', pattern: '0' }, width: 60 },
+    gender:                     { width: 80 },
+    state:                      { width: 60 },
+    zipCode:                    { numberFormat: { type: 'TEXT' }, width: 80 },
+    height:                     { numberFormat: { type: 'NUMBER', pattern: '0" in"' }, width: 70 },
+    weight:                     { numberFormat: { type: 'NUMBER', pattern: '0" lbs"' }, width: 80 },
+    bmi:                        { numberFormat: { type: 'NUMBER', pattern: '0.0' }, width: 60 },
+    smokingStatus:              { width: 100 },
+    healthRating:               { width: 100 },
+    hasDiabetes:                { width: 90 },
+    hasHeartDisease:            { width: 110 },
+    hasCancerHistory:           { width: 110 },
+    familyHistoryHeartDisease:  { width: 130 },
+    policyType:                 { width: 100 },
+    coverageAmount:             { numberFormat: { type: 'CURRENCY', pattern: '$#,##0' }, width: 110 },
+    monthlyPremium:             { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' }, width: 110 },
+    annualPremium:              { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' }, width: 110 },
+    healthClass:                { width: 120 },
+    verified:                   { width: 80 },
+    verificationMethod:         { width: 130 },
+    smsConsent:                 { width: 100 },
+    smsConsentTimestamp:        { numberFormat: { type: 'DATE_TIME', pattern: 'yyyy-mm-dd hh:mm' }, width: 140 },
+    source:                     { width: 90 },
+    notes:                      { width: 250 }
+};
+
+// Make sure the tab exists, has the header row, and is fully formatted.
 async function initializeSheet() {
     const sheets = getClient();
 
     // Check existing tabs
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
-    const tabExists = meta.data.sheets.some(s => s.properties.title === SHEET_NAME);
+    const existingTab = meta.data.sheets.find(s => s.properties.title === SHEET_NAME);
+    let sheetId = existingTab ? existingTab.properties.sheetId : null;
 
-    if (!tabExists) {
-        await sheets.spreadsheets.batchUpdate({
+    if (!existingTab) {
+        const created = await sheets.spreadsheets.batchUpdate({
             spreadsheetId: SHEET_ID,
             requestBody: {
                 requests: [{ addSheet: { properties: { title: SHEET_NAME } } }]
             }
         });
+        sheetId = created.data.replies[0].addSheet.properties.sheetId;
         console.log(`[sheets] Created tab "${SHEET_NAME}"`);
     }
 
@@ -118,6 +156,106 @@ async function initializeSheet() {
         });
         console.log(`[sheets] Wrote header row to "${SHEET_NAME}"`);
     }
+
+    // Apply formatting (idempotent — safe to run every startup)
+    await applyFormatting(sheets, sheetId);
+}
+
+async function applyFormatting(sheets, sheetId) {
+    const requests = [];
+
+    // 1) Freeze the header row
+    requests.push({
+        updateSheetProperties: {
+            properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
+            fields: 'gridProperties.frozenRowCount'
+        }
+    });
+
+    // 2) Style the header row (white text on blue, bold, centered)
+    requests.push({
+        repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: COLUMNS.length },
+            cell: {
+                userEnteredFormat: {
+                    backgroundColor: { red: 0.145, green: 0.388, blue: 0.922 }, // #2563EB
+                    textFormat: {
+                        foregroundColor: { red: 1, green: 1, blue: 1 },
+                        bold: true,
+                        fontSize: 11
+                    },
+                    horizontalAlignment: 'CENTER',
+                    verticalAlignment: 'MIDDLE'
+                }
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)'
+        }
+    });
+
+    // 3) Per-column number formats + widths
+    COLUMNS.forEach((col, i) => {
+        const fmt = COLUMN_FORMATS[col];
+        if (!fmt) return;
+
+        if (fmt.numberFormat) {
+            requests.push({
+                repeatCell: {
+                    range: { sheetId, startRowIndex: 1, startColumnIndex: i, endColumnIndex: i + 1 },
+                    cell: { userEnteredFormat: { numberFormat: fmt.numberFormat } },
+                    fields: 'userEnteredFormat.numberFormat'
+                }
+            });
+        }
+        if (fmt.width) {
+            requests.push({
+                updateDimensionProperties: {
+                    range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+                    properties: { pixelSize: fmt.width },
+                    fields: 'pixelSize'
+                }
+            });
+        }
+    });
+
+    // 4) Add alternating row banding for readability (skip if already exists)
+    try {
+        requests.push({
+            addBanding: {
+                bandedRange: {
+                    range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: COLUMNS.length },
+                    rowProperties: {
+                        headerColor: { red: 0.145, green: 0.388, blue: 0.922 },
+                        firstBandColor: { red: 1, green: 1, blue: 1 },
+                        secondBandColor: { red: 0.949, green: 0.961, blue: 0.980 } // #F1F5F9
+                    }
+                }
+            }
+        });
+    } catch (e) { /* banding already exists, ignore */ }
+
+    // 5) Add a basic filter so users can sort/filter from row 1
+    requests.push({
+        setBasicFilter: {
+            filter: {
+                range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: COLUMNS.length }
+            }
+        }
+    });
+
+    try {
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SHEET_ID,
+            requestBody: { requests }
+        });
+        console.log(`[sheets] Applied formatting to "${SHEET_NAME}"`);
+    } catch (err) {
+        // Banding/filter may already exist — log but don't crash
+        if (err.message && err.message.includes('already exists')) {
+            console.log(`[sheets] Formatting already in place — skipping duplicates.`);
+        } else {
+            console.warn(`[sheets] Formatting partially applied: ${err.message}`);
+        }
+    }
 }
 
 function columnLetter(n) {
@@ -131,19 +269,34 @@ function columnLetter(n) {
     return s;
 }
 
+function formatDateForSheets(value) {
+    // Accept Date objects or ISO strings; output "yyyy-mm-dd hh:mm" which Sheets parses as a date.
+    let d = value;
+    if (typeof value === 'string') {
+        d = new Date(value);
+        if (isNaN(d.getTime())) return value; // pass through if not a date
+    }
+    if (!(d instanceof Date)) return value;
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Columns that Sheets should interpret as dates
+const DATE_COLUMNS = new Set(['createdAt', 'dateOfBirth', 'smsConsentTimestamp']);
+
 async function appendRow(rowObject) {
     const sheets = getClient();
     const row = COLUMNS.map(col => {
-        const v = rowObject[col];
-        if (v === null || v === undefined) return '';
+        let v = rowObject[col];
+        if (v === null || v === undefined || v === '') return '';
         if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
-        if (v instanceof Date) return v.toISOString();
+        if (DATE_COLUMNS.has(col)) return formatDateForSheets(v);
         return v;
     });
     await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
         range: `${SHEET_NAME}!A:A`,
-        valueInputOption: 'RAW',
+        valueInputOption: 'USER_ENTERED', // lets Sheets parse numbers/dates and respect column formats
         requestBody: { values: [row] }
     });
 }
