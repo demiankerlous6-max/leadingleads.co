@@ -1,3 +1,3 @@
-// DEPRECATED: PostgreSQL was replaced by Google Sheets.
-// See services/sheetsClient.js for the new data layer.
-throw new Error('services/db.js (Postgres) was removed. Data now lives in Google Sheets via sheetsClient.js.');
+// Legacy module name — PostgreSQL was replaced by Google Sheets.
+// Kept as a transparent re-export so any forgotten import still works.
+module.exports = require('./dataStore');

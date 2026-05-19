@@ -1,3 +1,3 @@
-// DEPRECATED: replaced by services/dataStore.js (PostgreSQL-backed).
-// This file is kept only so any forgotten import logs a clear error instead of failing silently.
-throw new Error('excelService.js has been replaced by dataStore.js. Update your imports.');
+// Legacy module name — data layer was moved to dataStore.js (Google Sheets-backed).
+// Kept as a transparent re-export so any forgotten import still works.
+module.exports = require('./dataStore');
