@@ -64,7 +64,7 @@ const COLUMN_FORMATS = {
     state:    { width: 70 },
     termPlan: { width: 130 },
     quote:    { width: 130, numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' } },
-    verified: { width: 0,   hidden: true }
+    verified: { width: 90 }   // visible — shows "Yes" or "No"
 };
 
 function columnLetter(n) {
@@ -162,8 +162,32 @@ function formatDateForSheets(value) {
 
 const DATE_COLUMNS = new Set(['dob']);
 
+// Safety check: if headers were ever deleted, recreate them before appending.
+async function ensureHeaders(sheets) {
+    const headerRange = SHEET_NAME + '!A1:' + columnLetter(COLUMNS.length) + '1';
+    const headerCheck = await sheets.spreadsheets.values.get({
+        spreadsheetId: SHEET_ID, range: headerRange
+    });
+    const exists = headerCheck.data.values &&
+        headerCheck.data.values.length > 0 &&
+        headerCheck.data.values[0].some(c => c && String(c).trim().length > 0);
+    if (!exists) {
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: headerRange,
+            valueInputOption: 'RAW',
+            requestBody: { values: [COLUMNS.map(c => HEADER_LABELS[c] || c)] }
+        });
+        console.log('[sheets] Headers were missing — recreated them');
+    }
+}
+
 async function appendRow(rowObject) {
     const sheets = getClient();
+
+    // Make sure headers exist before adding any data row.
+    await ensureHeaders(sheets);
+
     const row = COLUMNS.map(col => {
         let v = rowObject[col];
         if (v === null || v === undefined || v === '') return '';
@@ -171,10 +195,14 @@ async function appendRow(rowObject) {
         if (DATE_COLUMNS.has(col)) return formatDateForSheets(v);
         return v;
     });
+
+    // INSERT_ROWS forces a new row at the bottom of the table — never overwrites.
+    // Range A1 anchors the search to the table starting at row 1.
     await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: SHEET_NAME + '!A:A',
+        range: SHEET_NAME + '!A1',
         valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
         requestBody: { values: [row] }
     });
 }
