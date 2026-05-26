@@ -1,15 +1,9 @@
-// Data persistence — Leads in Google Sheets (minimal schema), OTP codes in memory.
+// Temporary in-memory data store.
+// No persistence — all leads disappear when the server restarts.
+// Replace with a real database (Airtable, Supabase, new Google Sheet, etc.) when ready.
 
 const { v4: uuidv4 } = require('uuid');
 const ExcelJS = require('exceljs');
-const {
-    initializeSheet,
-    appendRow,
-    getAllRows,
-    findRowByLeadId,
-    updateRowFields,
-    COLUMNS
-} = require('./sheetsClient');
 
 const POLICY_LABELS = {
     'term-10':   '10-Year Term',
@@ -19,83 +13,60 @@ const POLICY_LABELS = {
     'universal': 'Universal Life'
 };
 
+// In-memory stores
+const leadsStore = new Map();   // leadId -> lead object
+const otpStore   = new Map();   // contact -> otp record
+
 async function initializeSchema() {
-    await initializeSheet();
-    console.log('[db] Google Sheets ready as the leads database.');
+    console.log('[db] In-memory store ready (no persistence — leads lost on restart).');
 }
 
-// In-memory cache of full quote details (annual premium, health class, BMI)
-// so the post-verification panel can show data not stored in the sheet.
-const quoteCache = new Map();
-
+// =================== LEADS ===================
 async function saveLead(lead) {
     const leadId = uuidv4();
-    const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
-
-    quoteCache.set(leadId, {
-        name: fullName,
-        monthlyPremium: lead.monthlyPremium,
-        annualPremium: lead.annualPremium,
-        healthClass: lead.healthClass || 'Standard',
-        bmi: lead.bmi,
-        state: lead.state
-    });
-
-    const row = {
+    const stored = {
         leadId,
-        name: fullName,
+        createdAt: new Date().toISOString(),
+        name: [lead.firstName, lead.lastName].filter(Boolean).join(' '),
+        firstName: lead.firstName,
+        lastName: lead.lastName,
         phone: lead.phone || '',
         email: lead.email || '',
         dob: lead.dateOfBirth || '',
         state: (lead.state || '').toUpperCase(),
         termPlan: POLICY_LABELS[lead.policyType] || lead.policyType || '',
-        quote: lead.monthlyPremium,
-        verified: lead.verified ? 'Yes' : 'No'
+        policyType: lead.policyType,
+        coverageAmount: lead.coverageAmount,
+        monthlyPremium: lead.monthlyPremium,
+        annualPremium: lead.annualPremium,
+        healthClass: lead.healthClass || 'Standard',
+        bmi: lead.bmi,
+        verified: !!lead.verified
     };
-    await appendRow(row);
+    leadsStore.set(leadId, stored);
+    console.log('[db] Saved lead', leadId, '(' + stored.name + ')');
     return leadId;
 }
 
 async function updateLeadVerification(leadId, method) {
-    const row = await findRowByLeadId(leadId);
-    if (!row) return false;
-    await updateRowFields(row._rowNumber, { verified: 'Yes' });
+    const lead = leadsStore.get(leadId);
+    if (!lead) return false;
+    lead.verified = true;
+    lead.verificationMethod = method;
     return true;
 }
 
 async function getLeadById(leadId) {
-    if (quoteCache.has(leadId)) {
-        const cached = quoteCache.get(leadId);
-        const row = await findRowByLeadId(leadId);
-        if (row) {
-            const { _rowNumber, ...lead } = row;
-            return { ...lead, ...cached };
-        }
-        return { leadId, ...cached };
-    }
-    const row = await findRowByLeadId(leadId);
-    if (!row) return null;
-    const { _rowNumber, ...lead } = row;
-    return {
-        ...lead,
-        monthlyPremium: Number(lead.quote || 0),
-        annualPremium: Number(lead.quote || 0) * 12,
-        healthClass: 'Standard',
-        bmi: 0
-    };
+    return leadsStore.get(leadId) || null;
 }
 
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
-    const all = await getAllRows();
-    const filtered = verifiedOnly
-        ? all.filter(r => r.verified === true || r.verified === 'Yes')
-        : all;
-    return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
+    const all = Array.from(leadsStore.values());
+    const filtered = verifiedOnly ? all.filter(r => r.verified) : all;
+    return filtered.slice(-limit).reverse();
 }
 
 // =================== OTP (in-memory) ===================
-const otpStore = new Map();
-
 setInterval(() => {
     const now = new Date();
     for (const [contact, entry] of otpStore.entries()) {
@@ -106,12 +77,9 @@ setInterval(() => {
 async function saveOtp({ contact, method, codeHash, expiresAt }) {
     const otpId = uuidv4();
     otpStore.set(contact, {
-        otpId,
-        method,
-        codeHash,
+        otpId, method, codeHash,
         expiresAt: new Date(expiresAt),
-        verified: false,
-        attempts: 0,
+        verified: false, attempts: 0,
         createdAt: new Date()
     });
     return otpId;
@@ -150,12 +118,15 @@ async function markOtpVerified(otpId) {
 async function exportLeadsToExcelBuffer({ verifiedOnly = false } = {}) {
     const leads = await listLeads({ limit: 100000, verifiedOnly });
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'LeadingLeads.co';
-    wb.created = new Date();
     const sheet = wb.addWorksheet('Leads');
-    sheet.columns = COLUMNS.filter(c => c !== 'leadId').map(h => ({ header: h, key: h, width: 18 }));
+    const headers = ['Name', 'Phone', 'Email', 'DOB', 'State', 'Term Plan', 'Estimated Quote', 'Verified'];
+    sheet.columns = headers.map(h => ({ header: h, key: h, width: 18 }));
     sheet.getRow(1).font = { bold: true };
-    leads.forEach(lead => sheet.addRow(lead));
+    leads.forEach(l => sheet.addRow({
+        Name: l.name, Phone: l.phone, Email: l.email, DOB: l.dob,
+        State: l.state, 'Term Plan': l.termPlan,
+        'Estimated Quote': l.monthlyPremium, Verified: l.verified ? 'Yes' : 'No'
+    }));
     return await wb.xlsx.writeBuffer();
 }
 
