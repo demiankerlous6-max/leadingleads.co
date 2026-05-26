@@ -41,10 +41,11 @@ function getClient() {
     return sheetsClient;
 }
 
-const COLUMNS = ['leadId', 'name', 'phone', 'email', 'dob', 'state', 'termPlan', 'quote', 'verified'];
+const COLUMNS = ['leadId', 'submittedAt', 'name', 'phone', 'email', 'dob', 'state', 'termPlan', 'quote', 'verified'];
 
 const HEADER_LABELS = {
     leadId: 'Lead ID',
+    submittedAt: 'Submitted',
     name: 'Name',
     phone: 'Phone',
     email: 'Email',
@@ -56,15 +57,16 @@ const HEADER_LABELS = {
 };
 
 const COLUMN_FORMATS = {
-    leadId:   { width: 0,   hidden: true },
-    name:     { width: 160 },
-    phone:    { width: 140, numberFormat: { type: 'TEXT' } },
-    email:    { width: 220 },
-    dob:      { width: 110, numberFormat: { type: 'DATE', pattern: 'mm/dd/yyyy' } },
-    state:    { width: 70 },
-    termPlan: { width: 130 },
-    quote:    { width: 130, numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' } },
-    verified: { width: 90 }   // visible — shows "Yes" or "No"
+    leadId:      { width: 0,   hidden: true },
+    submittedAt: { width: 160, numberFormat: { type: 'DATE_TIME', pattern: 'mm/dd/yyyy h:mm am/pm' } },
+    name:        { width: 160 },
+    phone:       { width: 140, numberFormat: { type: 'TEXT' } },
+    email:       { width: 220 },
+    dob:         { width: 110, numberFormat: { type: 'DATE', pattern: 'mm/dd/yyyy' } },
+    state:       { width: 70 },
+    termPlan:    { width: 130 },
+    quote:       { width: 130, numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' } },
+    verified:    { width: 90 }
 };
 
 function columnLetter(n) {
@@ -157,10 +159,12 @@ function formatDateForSheets(value) {
     }
     if (!(d instanceof Date)) return value;
     const pad = n => String(n).padStart(2, '0');
-    return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + '/' + d.getFullYear();
+    // Always include time — Sheets respects the column format
+    // (DATE columns show just the date, DATE_TIME columns show both)
+    return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
 }
 
-const DATE_COLUMNS = new Set(['dob']);
+const DATE_COLUMNS = new Set(['dob', 'submittedAt']);
 
 // Safety check: if headers were ever deleted, recreate them before appending.
 async function ensureHeaders(sheets) {

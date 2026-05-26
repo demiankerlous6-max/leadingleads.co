@@ -42,6 +42,7 @@ async function saveLead(lead) {
 
     const row = {
         leadId,
+        submittedAt: new Date(),
         name: fullName,
         phone: lead.phone || '',
         email: lead.email || '',
