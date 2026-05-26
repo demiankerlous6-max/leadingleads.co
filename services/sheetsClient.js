@@ -58,81 +58,38 @@ function getClient() {
 }
 
 // =====================================================================
-// SIMPLIFIED COLUMN SET — agent-friendly, 20 columns
+// MINIMAL COLUMN SET — only the essentials
 // =====================================================================
-// Column keys are camelCase (used in code). Display headers below are
-// Title Case (what shows in the sheet).
+// Visible: Name, Phone, Email, DOB, Quote
+// Hidden (internal use): leadId, verified
 const COLUMNS = [
     'leadId',
-    'date',
     'name',
     'phone',
     'email',
-    'age',
-    'gender',
-    'state',
-    'height',
-    'weight',
-    'bmi',
-    'smoking',
-    'health',
-    'conditions',
-    'policyType',
-    'coverage',
-    'monthlyPremium',
-    'annualPremium',
-    'healthClass',
-    'verified',
-    'notes'
+    'dob',
+    'quote',
+    'verified'
 ];
 
 const HEADER_LABELS = {
     leadId: 'Lead ID',
-    date: 'Date',
     name: 'Name',
     phone: 'Phone',
     email: 'Email',
-    age: 'Age',
-    gender: 'Gender',
-    state: 'State',
-    height: 'Height',
-    weight: 'Weight',
-    bmi: 'BMI',
-    smoking: 'Smoking',
-    health: 'Health',
-    conditions: 'Conditions',
-    policyType: 'Policy',
-    coverage: 'Coverage',
-    monthlyPremium: 'Monthly Premium',
-    annualPremium: 'Annual Premium',
-    healthClass: 'Class',
-    verified: 'Verified',
-    notes: 'Notes'
+    dob: 'DOB',
+    quote: 'Estimated Quote',
+    verified: 'Verified'
 };
 
-// Per-column display rules
 const COLUMN_FORMATS = {
-    leadId:         { numberFormat: { type: 'TEXT' }, width: 0,   hidden: true },   // hidden — only used by code
-    date:           { numberFormat: { type: 'DATE_TIME', pattern: 'mmm d, yyyy h:mm am/pm' }, width: 150 },
-    name:           { width: 140 },
-    phone:          { numberFormat: { type: 'TEXT' }, width: 130 },
-    email:          { width: 200 },
-    age:            { numberFormat: { type: 'NUMBER', pattern: '0' }, width: 60 },
-    gender:         { width: 80 },
-    state:          { width: 60 },
-    height:         { numberFormat: { type: 'NUMBER', pattern: '0" in"' }, width: 70 },
-    weight:         { numberFormat: { type: 'NUMBER', pattern: '0" lbs"' }, width: 85 },
-    bmi:            { numberFormat: { type: 'NUMBER', pattern: '0.0' }, width: 60 },
-    smoking:        { width: 90 },
-    health:         { width: 90 },
-    conditions:     { width: 200, wrap: true },
-    policyType:     { width: 140 },
-    coverage:       { numberFormat: { type: 'CURRENCY', pattern: '$#,##0' }, width: 110 },
-    monthlyPremium: { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' }, width: 120 },
-    annualPremium:  { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' }, width: 120 },
-    healthClass:    { width: 130 },
-    verified:       { width: 80 },
-    notes:          { width: 250, wrap: true }
+    leadId:   { numberFormat: { type: 'TEXT' }, width: 0,   hidden: true },
+    name:     { width: 180 },
+    phone:    { numberFormat: { type: 'TEXT' }, width: 150 },
+    email:    { width: 230 },
+    dob:      { numberFormat: { type: 'DATE', pattern: 'mmm d, yyyy' }, width: 130 },
+    quote:    { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00"/mo"' }, width: 150 },
+    verified: { width: 0, hidden: true }
 };
 
 // =====================================================================
@@ -303,7 +260,7 @@ function formatDateForSheets(value) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const DATE_COLUMNS = new Set(['date']);
+const DATE_COLUMNS = new Set(['dob']);
 
 async function appendRow(rowObject) {
     const sheets = getClient();

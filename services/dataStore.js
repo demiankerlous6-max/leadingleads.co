@@ -11,30 +11,6 @@ const {
     COLUMNS
 } = require('./sheetsClient');
 
-// =================== Display formatters ===================
-
-const POLICY_LABELS = {
-    'term-10':   '10-Year Term',
-    'term-20':   '20-Year Term',
-    'term-30':   '30-Year Term',
-    'whole':     'Whole Life',
-    'universal': 'Universal Life'
-};
-
-function title(s) {
-    if (!s) return '';
-    return String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase();
-}
-
-function buildConditionsString(lead) {
-    const list = [];
-    if (lead.hasDiabetes)               list.push('Diabetes');
-    if (lead.hasHeartDisease)           list.push('Heart disease');
-    if (lead.hasCancerHistory)          list.push('Cancer history');
-    if (lead.familyHistoryHeartDisease) list.push('Family heart disease');
-    return list.length ? list.join(', ') : 'None';
-}
-
 // =================== INITIALIZATION ===================
 async function initializeSchema() {
     await initializeSheet();
@@ -42,30 +18,32 @@ async function initializeSchema() {
 }
 
 // =================== LEADS ===================
+// In-memory cache of full quote details for each lead.
+// The sheet only stores the essentials; this holds annual premium,
+// health class, and BMI for the post-verification display.
+const quoteCache = new Map();
+
 async function saveLead(lead) {
     const leadId = uuidv4();
-    const row = {
-        leadId,
-        date: new Date().toISOString(),
-        name: [lead.firstName, lead.lastName].filter(Boolean).join(' '),
-        phone: lead.phone || '',
-        email: lead.email || '',
-        age: lead.age,
-        gender: title(lead.gender),
-        state: (lead.state || '').toUpperCase(),
-        height: lead.height,
-        weight: lead.weight,
-        bmi: lead.bmi,
-        smoking: title(lead.smokingStatus),
-        health: title(lead.healthRating),
-        conditions: buildConditionsString(lead),
-        policyType: POLICY_LABELS[lead.policyType] || lead.policyType,
-        coverage: lead.coverageAmount,
+    const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
+
+    quoteCache.set(leadId, {
+        name: fullName,
         monthlyPremium: lead.monthlyPremium,
         annualPremium: lead.annualPremium,
-        healthClass: lead.healthClass || '',
-        verified: lead.verified ? 'Yes' : 'No',
-        notes: lead.notes || ''
+        healthClass: lead.healthClass || 'Standard',
+        bmi: lead.bmi,
+        state: lead.state
+    });
+
+    const row = {
+        leadId,
+        name: fullName,
+        phone: lead.phone || '',
+        email: lead.email || '',
+        dob: lead.dateOfBirth || '',
+        quote: lead.monthlyPremium,
+        verified: lead.verified ? 'Yes' : 'No'
     };
     await appendRow(row);
     return leadId;
@@ -79,10 +57,27 @@ async function updateLeadVerification(leadId, method) {
 }
 
 async function getLeadById(leadId) {
+    // Prefer the in-memory quote cache (has the extra fields).
+    // Fall back to the sheet if the cache was cleared (server restart).
+    if (quoteCache.has(leadId)) {
+        const cached = quoteCache.get(leadId);
+        const row = await findRowByLeadId(leadId);
+        if (row) {
+            const { _rowNumber, ...lead } = row;
+            return { ...lead, ...cached };
+        }
+        return { leadId, ...cached };
+    }
     const row = await findRowByLeadId(leadId);
     if (!row) return null;
     const { _rowNumber, ...lead } = row;
-    return lead;
+    return {
+        ...lead,
+        monthlyPremium: Number(lead.quote || 0),
+        annualPremium: Number(lead.quote || 0) * 12,
+        healthClass: 'Standard',
+        bmi: 0
+    };
 }
 
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
