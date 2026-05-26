@@ -1,4 +1,4 @@
-// Data persistence — Leads in Google Sheets (simplified schema), OTP codes in memory.
+// Data persistence — Leads in Google Sheets (minimal schema), OTP codes in memory.
 
 const { v4: uuidv4 } = require('uuid');
 const ExcelJS = require('exceljs');
@@ -11,16 +11,21 @@ const {
     COLUMNS
 } = require('./sheetsClient');
 
-// =================== INITIALIZATION ===================
+const POLICY_LABELS = {
+    'term-10':   '10-Year Term',
+    'term-20':   '20-Year Term',
+    'term-30':   '30-Year Term',
+    'whole':     'Whole Life',
+    'universal': 'Universal Life'
+};
+
 async function initializeSchema() {
     await initializeSheet();
     console.log('[db] Google Sheets ready as the leads database.');
 }
 
-// =================== LEADS ===================
-// In-memory cache of full quote details for each lead.
-// The sheet only stores the essentials; this holds annual premium,
-// health class, and BMI for the post-verification display.
+// In-memory cache of full quote details (annual premium, health class, BMI)
+// so the post-verification panel can show data not stored in the sheet.
 const quoteCache = new Map();
 
 async function saveLead(lead) {
@@ -42,6 +47,7 @@ async function saveLead(lead) {
         phone: lead.phone || '',
         email: lead.email || '',
         dob: lead.dateOfBirth || '',
+        termPlan: POLICY_LABELS[lead.policyType] || lead.policyType || '',
         quote: lead.monthlyPremium,
         verified: lead.verified ? 'Yes' : 'No'
     };
@@ -57,8 +63,6 @@ async function updateLeadVerification(leadId, method) {
 }
 
 async function getLeadById(leadId) {
-    // Prefer the in-memory quote cache (has the extra fields).
-    // Fall back to the sheet if the cache was cleared (server restart).
     if (quoteCache.has(leadId)) {
         const cached = quoteCache.get(leadId);
         const row = await findRowByLeadId(leadId);
@@ -82,7 +86,9 @@ async function getLeadById(leadId) {
 
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
     const all = await getAllRows();
-    const filtered = verifiedOnly ? all.filter(r => r.verified === true || r.verified === 'Yes') : all;
+    const filtered = verifiedOnly
+        ? all.filter(r => r.verified === true || r.verified === 'Yes')
+        : all;
     return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
 }
 
@@ -163,4 +169,4 @@ module.exports = {
     incrementOtpAttempts,
     markOtpVerified,
     exportLeadsToExcelBuffer
-};
+}
