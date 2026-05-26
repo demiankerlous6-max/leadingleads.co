@@ -1,171 +1,174 @@
-// LeadingLeads.co Quote Engine
-// Algorithm derived from public industry data (2026 average rates):
-//  - Term life base rates per $1,000 of coverage scale with age
-//  - Men pay ~23% more than women on average
-//  - Smokers pay 2-3x more (we use 2.2x current, 1.3x former)
-//  - Rates accelerate ~5-8% per year after age 45
-//  - Coverage > $250k receives volume discount (per-$1k rate decreases)
-//  - State factor reflects regulatory + health/cost variation
-//
-// Sources used to inform constants:
-//   - NerdWallet, ValuePenguin, Ramsey Solutions, Policygenius, Insuranceopedia (2026 data)
+// LeadingLeads.co Quote Engine V2 - carrier-grade precision
+// Term life uses one rate table; whole/universal life use their own.
+// Calibrated against 2026 published rates (NerdWallet, MoneyGeek, Ramsey, AAA, Guardian).
 
-// --- Constants ---
-
-// Base annual rate per $1,000 of coverage (20-year term, female, non-smoker, excellent health)
-// Calibrated against published average term life rates for 2026.
-const BASE_RATE_PER_1K_BY_AGE = {
-    18: 0.42, 25: 0.45, 30: 0.50, 35: 0.62, 40: 0.85, 45: 1.25,
-    50: 1.95, 55: 3.10, 60: 4.85, 65: 7.40, 70: 11.20, 75: 17.00,
-    80: 26.00, 85: 38.00
+const TERM_BASE = {
+    male: { 18:16, 25:19, 30:24, 35:29, 40:44, 45:62, 50:92, 55:148, 60:268, 65:488, 70:860, 75:1520, 80:2400, 85:3600 },
+    female: { 18:13, 25:16, 30:20, 35:25, 40:37, 45:50, 50:78, 55:122, 60:222, 65:412, 70:728, 75:1300, 80:2070, 85:3120 },
+    other: { 18:14, 25:17, 30:22, 35:27, 40:40, 45:56, 50:85, 55:135, 60:245, 65:450, 70:794, 75:1410, 80:2235, 85:3360 }
 };
 
-// Multipliers for policy type (relative to 20-year term)
+const WHOLE_BASE = {
+    male: { 25:85, 30:105, 35:122, 40:141, 45:175, 50:214, 55:263, 60:324, 65:435, 70:580, 75:780, 80:1050, 85:1380 },
+    female: { 25:72, 30:90, 35:103, 40:120, 45:148, 50:180, 55:222, 60:275, 65:370, 70:495, 75:670, 80:900, 85:1180 },
+    other: { 25:78, 30:97, 35:112, 40:130, 45:161, 50:197, 55:242, 60:299, 65:402, 70:537, 75:725, 80:975, 85:1280 }
+};
+
 const POLICY_TYPE_MULTIPLIER = {
-    'term-10': 0.75,
+    'term-10': 0.72,
     'term-20': 1.00,
-    'term-30': 1.40,
-    'whole':   6.50,   // Whole life is significantly more expensive
-    'universal': 4.80
+    'term-30': 1.48,
+    'whole': 1.00,
+    'universal': 0.55
 };
 
-// Gender adjustment (women have longer life expectancy)
-const GENDER_MULTIPLIER = {
-    'female': 1.00,
-    'male':   1.23,
-    'other':  1.12   // midpoint
-};
+const TERM_COVERAGE_ANCHORS = [
+    [25000, 0.30], [50000, 0.40], [100000, 0.55], [250000, 0.78],
+    [500000, 1.00], [750000, 1.10], [1000000, 1.18], [1500000, 1.65],
+    [2000000, 2.05], [3000000, 2.95], [5000000, 4.85]
+];
 
-// Smoking is the single biggest factor
-const SMOKING_MULTIPLIER = {
-    'never':   1.00,
-    'former':  1.30,
-    'current': 2.20
-};
+const WHOLE_COVERAGE_ANCHORS = [
+    [25000, 0.28], [50000, 0.55], [100000, 1.00], [250000, 2.40],
+    [500000, 4.70], [1000000, 9.30], [2000000, 18.50]
+];
 
-// Self-reported health rating
-const HEALTH_MULTIPLIER = {
-    'excellent': 0.90,
-    'good':      1.00,
-    'average':   1.25,
-    'poor':      1.80
-};
-
-// State factor — captures regulatory + cost-of-living variation
-// (1.00 = national average; higher-cost states above 1.0)
-const STATE_MULTIPLIER = {
-    'CA': 1.08, 'NY': 1.10, 'TX': 1.06, 'FL': 1.07, 'IL': 1.06, 'NJ': 1.08,
-    'MA': 1.05, 'CT': 1.05, 'WA': 1.03, 'OR': 1.02, 'CO': 1.00, 'AZ': 1.01,
-    'NV': 1.02, 'GA': 1.02, 'NC': 1.01, 'VA': 1.01, 'MD': 1.04, 'PA': 1.03,
-    'OH': 1.00, 'MI': 1.01, 'MN': 0.99, 'WI': 0.98, 'IN': 0.99, 'MO': 0.99,
-    'TN': 1.00, 'AL': 1.03, 'SC': 1.02, 'LA': 1.08, 'MS': 1.09, 'AR': 1.03,
-    'OK': 1.02, 'KS': 0.98, 'NE': 0.97, 'IA': 0.97, 'ND': 0.96, 'SD': 0.96,
-    'MT': 0.97, 'WY': 0.95, 'ID': 0.96, 'UT': 0.97, 'NM': 1.02, 'KY': 1.03,
-    'WV': 1.07, 'ME': 1.00, 'NH': 0.99, 'VT': 0.99, 'RI': 1.04, 'DE': 1.03,
-    'HI': 0.99, 'AK': 1.02, 'DC': 1.05
-};
-
-// --- Helpers ---
-
-function getBaseRate(age) {
-    // Interpolate base rate per $1k between known anchor points
-    const ages = Object.keys(BASE_RATE_PER_1K_BY_AGE).map(Number).sort((a, b) => a - b);
-    if (age <= ages[0]) return BASE_RATE_PER_1K_BY_AGE[ages[0]];
-    if (age >= ages[ages.length - 1]) return BASE_RATE_PER_1K_BY_AGE[ages[ages.length - 1]];
-
-    for (let i = 0; i < ages.length - 1; i++) {
-        const lo = ages[i], hi = ages[i + 1];
-        if (age >= lo && age <= hi) {
-            const fraction = (age - lo) / (hi - lo);
-            return BASE_RATE_PER_1K_BY_AGE[lo] +
-                   fraction * (BASE_RATE_PER_1K_BY_AGE[hi] - BASE_RATE_PER_1K_BY_AGE[lo]);
+function interpolateAnchors(anchors, value) {
+    if (value <= anchors[0][0]) return anchors[0][1] * (value / anchors[0][0]);
+    if (value >= anchors[anchors.length - 1][0]) return anchors[anchors.length - 1][1];
+    for (let i = 0; i < anchors.length - 1; i++) {
+        const [v1, m1] = anchors[i];
+        const [v2, m2] = anchors[i + 1];
+        if (value >= v1 && value <= v2) {
+            const f = (value - v1) / (v2 - v1);
+            return m1 + f * (m2 - m1);
         }
     }
-    return BASE_RATE_PER_1K_BY_AGE[ages[ages.length - 1]];
+    return 1.0;
 }
 
-function getBmi(heightInches, weightLbs) {
+function coverageMultiplier(coverage, policyType) {
+    const anchors = (policyType === 'whole' || policyType === 'universal') ? WHOLE_COVERAGE_ANCHORS : TERM_COVERAGE_ANCHORS;
+    return interpolateAnchors(anchors, coverage);
+}
+
+function smokingMultiplier(smokingStatus, age) {
+    if (smokingStatus === 'never') return 1.00;
+    if (smokingStatus === 'former') return 1.20;
+    if (age < 45) return 2.50;
+    if (age < 60) return 2.20;
+    return 2.55;
+}
+
+function classifyHealthClass(input) {
+    const family = !!input.familyHistoryHeartDisease;
+    if (input.smokingStatus === 'current') {
+        if (input.healthRating === 'poor') return 'Substandard';
+        return 'Standard';
+    }
+    if (input.healthRating === 'excellent' && !family) return 'Preferred Plus';
+    if (input.healthRating === 'excellent') return 'Preferred';
+    if (input.healthRating === 'good' && !family) return 'Preferred';
+    if (input.healthRating === 'good') return 'Standard Plus';
+    if (input.healthRating === 'average') return 'Standard';
+    return 'Substandard';
+}
+
+const HEALTH_CLASS_MULTIPLIER = {
+    'Preferred Plus': 0.84,
+    'Preferred': 1.00,
+    'Standard Plus': 1.22,
+    'Standard': 1.42,
+    'Substandard': 2.00
+};
+
+function bmi(heightInches, weightLbs) {
     return (weightLbs / (heightInches * heightInches)) * 703;
 }
 
-function getBmiMultiplier(bmi) {
-    // Healthy BMI 18.5-24.9 = 1.0
-    if (bmi < 18.5) return 1.15;   // underweight
-    if (bmi < 25)   return 1.00;
-    if (bmi < 30)   return 1.10;   // overweight
-    if (bmi < 35)   return 1.30;   // obese class I
-    if (bmi < 40)   return 1.65;   // obese class II
-    return 2.10;                    // morbidly obese
+function bmiMultiplier(b) {
+    if (b < 18.5) return 1.20;
+    if (b < 25) return 1.00;
+    if (b < 28) return 1.06;
+    if (b < 30) return 1.20;
+    if (b < 33) return 1.45;
+    if (b < 35) return 1.70;
+    if (b < 40) return 2.10;
+    return 2.85;
 }
 
-function getCoverageDiscount(coverageAmount) {
-    // Volume discount: per-$1k rate decreases as coverage rises
-    if (coverageAmount >= 1000000) return 0.70;
-    if (coverageAmount >= 500000)  return 0.80;
-    if (coverageAmount >= 250000)  return 0.90;
-    if (coverageAmount >= 100000)  return 1.00;
-    return 1.15;  // small face amounts cost more per $1k
-}
-
-function getConditionsMultiplier(input) {
+function conditionsMultiplier(input) {
     let m = 1.0;
-    if (input.hasDiabetes)              m *= 1.35;
-    if (input.hasHeartDisease)          m *= 1.85;
-    if (input.hasCancerHistory)         m *= 1.55;
+    if (input.hasDiabetes) m *= 1.55;
+    if (input.hasHeartDisease) m *= 2.10;
+    if (input.hasCancerHistory) m *= 1.65;
     if (input.familyHistoryHeartDisease) m *= 1.12;
     return m;
 }
 
-// --- Main quote function ---
+const STATE_MULTIPLIER = {
+    CA:1.05, NY:1.06, TX:1.04, FL:1.04, IL:1.03, NJ:1.05, MA:1.03, CT:1.03,
+    WA:1.02, OR:1.01, CO:1.00, AZ:1.01, NV:1.01, GA:1.01, NC:1.00, VA:1.00,
+    MD:1.02, PA:1.02, OH:1.00, MI:1.01, MN:0.99, WI:0.99, IN:0.99, MO:0.99,
+    TN:1.00, AL:1.02, SC:1.01, LA:1.04, MS:1.05, AR:1.02, OK:1.01, KS:0.99,
+    NE:0.98, IA:0.98, ND:0.97, SD:0.97, MT:0.98, WY:0.97, ID:0.97, UT:0.98,
+    NM:1.01, KY:1.02, WV:1.04, ME:1.00, NH:0.99, VT:0.99, RI:1.02, DE:1.02,
+    HI:1.00, AK:1.01, DC:1.03
+};
+
+function interpolateBaseRate(genderTable, age) {
+    const ages = Object.keys(genderTable).map(Number).sort((a, b) => a - b);
+    if (age <= ages[0]) return genderTable[ages[0]];
+    if (age >= ages[ages.length - 1]) return genderTable[ages[ages.length - 1]];
+    for (let i = 0; i < ages.length - 1; i++) {
+        const lo = ages[i], hi = ages[i + 1];
+        if (age >= lo && age <= hi) {
+            const f = (age - lo) / (hi - lo);
+            return genderTable[lo] + f * (genderTable[hi] - genderTable[lo]);
+        }
+    }
+    return genderTable[ages[ages.length - 1]];
+}
+
+function round(n) { return Math.round(n * 100) / 100; }
 
 function calculateQuote(input) {
-    const age = input.age;
-    const baseRatePer1k = getBaseRate(age);
-    const coverageInThousands = input.coverageAmount / 1000;
+    const isPermanent = input.policyType === 'whole' || input.policyType === 'universal';
+    const baseTable = isPermanent ? WHOLE_BASE : TERM_BASE;
+    const genderTable = baseTable[input.gender] || baseTable.other;
+    const baseMonthly = interpolateBaseRate(genderTable, input.age);
 
-    const policyMult     = POLICY_TYPE_MULTIPLIER[input.policyType] || 1.0;
-    const genderMult     = GENDER_MULTIPLIER[input.gender] || 1.0;
-    const smokingMult    = SMOKING_MULTIPLIER[input.smokingStatus] || 1.0;
-    const healthMult     = HEALTH_MULTIPLIER[input.healthRating] || 1.0;
-    const stateMult      = STATE_MULTIPLIER[input.state] || 1.0;
-    const bmi            = getBmi(input.height, input.weight);
-    const bmiMult        = getBmiMultiplier(bmi);
-    const conditionsMult = getConditionsMultiplier(input);
-    const coverageMult   = getCoverageDiscount(input.coverageAmount);
+    const policyMult = POLICY_TYPE_MULTIPLIER[input.policyType] || 1.0;
+    const coverageMult = coverageMultiplier(input.coverageAmount, input.policyType);
+    const smokingMult = smokingMultiplier(input.smokingStatus, input.age);
+    const healthClass = classifyHealthClass(input);
+    const healthClassMult = HEALTH_CLASS_MULTIPLIER[healthClass];
+    const userBmi = bmi(input.height, input.weight);
+    const bmiMult = bmiMultiplier(userBmi);
+    const conditionsMult = conditionsMultiplier(input);
+    const stateMult = STATE_MULTIPLIER[input.state] || 1.0;
 
-    const totalMultiplier = policyMult * genderMult * smokingMult * healthMult *
-                            stateMult * bmiMult * conditionsMult * coverageMult;
-
-    const annualPremium = baseRatePer1k * coverageInThousands * totalMultiplier;
-    const monthlyPremium = annualPremium / 12;
-
-    // Health classification (industry shorthand)
-    let healthClass = 'Standard';
-    if (totalMultiplier < 0.95 && bmi < 27 && input.smokingStatus === 'never') {
-        healthClass = 'Preferred Plus';
-    } else if (totalMultiplier < 1.15 && input.smokingStatus !== 'current') {
-        healthClass = 'Preferred';
-    } else if (totalMultiplier > 2.0 || input.smokingStatus === 'current') {
-        healthClass = 'Substandard';
-    }
+    let monthly = baseMonthly * policyMult * coverageMult * smokingMult * healthClassMult * bmiMult * conditionsMult * stateMult;
+    monthly *= 1.05;
 
     return {
-        monthlyPremium: Math.round(monthlyPremium * 100) / 100,
-        annualPremium: Math.round(annualPremium * 100) / 100,
+        monthlyPremium: round(monthly),
+        annualPremium: round(monthly * 12),
         healthClass,
-        bmi: Math.round(bmi * 10) / 10,
+        bmi: Math.round(userBmi * 10) / 10,
         breakdown: {
-            baseRatePer1k: Math.round(baseRatePer1k * 100) / 100,
-            coverageInThousands,
+            baseMonthly: round(baseMonthly),
+            baseTable: isPermanent ? 'whole-life' : 'term-life',
             policyMultiplier: policyMult,
-            genderMultiplier: genderMult,
+            coverageMultiplier: round(coverageMult),
             smokingMultiplier: smokingMult,
-            healthMultiplier: healthMult,
-            stateMultiplier: stateMult,
+            healthClass,
+            healthClassMultiplier: healthClassMult,
+            bmiValue: Math.round(userBmi * 10) / 10,
             bmiMultiplier: bmiMult,
-            conditionsMultiplier: Math.round(conditionsMult * 100) / 100,
-            coverageDiscount: coverageMult,
-            totalMultiplier: Math.round(totalMultiplier * 1000) / 1000
+            conditionsMultiplier: round(conditionsMult),
+            stateMultiplier: stateMult,
+            conservativeBuffer: 1.05
         }
     };
 }
