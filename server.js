@@ -15,6 +15,11 @@ const { initializeSchema } = require('./services/dataStore');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render/Heroku/most hosts put us behind a reverse proxy.
+// This tells Express to trust the X-Forwarded-* headers so rate-limiting
+// and IP detection work correctly.
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
