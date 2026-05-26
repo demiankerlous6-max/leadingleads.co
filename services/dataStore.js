@@ -47,6 +47,7 @@ async function saveLead(lead) {
         phone: lead.phone || '',
         email: lead.email || '',
         dob: lead.dateOfBirth || '',
+        state: (lead.state || '').toUpperCase(),
         termPlan: POLICY_LABELS[lead.policyType] || lead.policyType || '',
         quote: lead.monthlyPremium,
         verified: lead.verified ? 'Yes' : 'No'
@@ -169,4 +170,4 @@ module.exports = {
     incrementOtpAttempts,
     markOtpVerified,
     exportLeadsToExcelBuffer
-}
+};

@@ -1,5 +1,5 @@
-// Google Sheets API client for LeadingLeads.co
-// Uses a service account for server-to-server auth (no user OAuth flow).
+// Google Sheets API client for LeadingLeads.co — minimal version
+// Only handles: connection, writing rows, basic column widths and number formats.
 
 const { google } = require('googleapis');
 
@@ -22,42 +22,29 @@ function parsePrivateKey(raw) {
 function getCredentials() {
     const jsonBlob = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     if (jsonBlob) {
-        try {
-            const parsed = JSON.parse(jsonBlob);
-            if (!parsed.client_email || !parsed.private_key) {
-                throw new Error('JSON is missing client_email or private_key.');
-            }
-            return {
-                client_email: parsed.client_email,
-                private_key: parsePrivateKey(parsed.private_key)
-            };
-        } catch (err) {
-            throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON could not be parsed: ' + err.message);
-        }
+        const parsed = JSON.parse(jsonBlob);
+        return { client_email: parsed.client_email, private_key: parsePrivateKey(parsed.private_key) };
     }
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const key = parsePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY);
-    if (!email || !key) {
-        throw new Error('Missing Google credentials. Set GOOGLE_SERVICE_ACCOUNT_JSON.');
-    }
-    return { client_email: email, private_key: key };
+    return {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: parsePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY)
+    };
 }
 
 function getClient() {
     if (sheetsClient) return sheetsClient;
     if (!SHEET_ID) throw new Error('GOOGLE_SHEETS_ID must be set.');
-    const creds = getCredentials();
     const auth = new google.auth.GoogleAuth({
-        credentials: creds,
+        credentials: getCredentials(),
         scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
     sheetsClient = google.sheets({ version: 'v4', auth });
     return sheetsClient;
 }
 
-// Visible: Name, Phone, Email, DOB, Term Plan, Quote
-// Hidden (internal): leadId, verified
-const COLUMNS = ['leadId', 'name', 'phone', 'email', 'dob', 'termPlan', 'quote', 'verified'];
+// Visible columns: Name, Phone, Email, DOB, State, Term Plan, Estimated Quote
+// Hidden internal: leadId, verified
+const COLUMNS = ['leadId', 'name', 'phone', 'email', 'dob', 'state', 'termPlan', 'quote', 'verified'];
 
 const HEADER_LABELS = {
     leadId: 'Lead ID',
@@ -65,21 +52,33 @@ const HEADER_LABELS = {
     phone: 'Phone',
     email: 'Email',
     dob: 'DOB',
+    state: 'State',
     termPlan: 'Term Plan',
     quote: 'Estimated Quote',
     verified: 'Verified'
 };
 
 const COLUMN_FORMATS = {
-    leadId:   { numberFormat: { type: 'TEXT' }, width: 0, hidden: true },
-    name:     { width: 180 },
-    phone:    { numberFormat: { type: 'TEXT' }, width: 150 },
-    email:    { width: 230 },
-    dob:      { numberFormat: { type: 'DATE', pattern: 'mmm d, yyyy' }, width: 130 },
-    termPlan: { width: 140 },
-    quote:    { numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00"/mo"' }, width: 150 },
-    verified: { width: 0, hidden: true }
+    leadId:   { width: 0,   hidden: true },
+    name:     { width: 160 },
+    phone:    { width: 140, numberFormat: { type: 'TEXT' } },
+    email:    { width: 220 },
+    dob:      { width: 110, numberFormat: { type: 'DATE', pattern: 'mm/dd/yyyy' } },
+    state:    { width: 70 },
+    termPlan: { width: 130 },
+    quote:    { width: 130, numberFormat: { type: 'CURRENCY', pattern: '$#,##0.00' } },
+    verified: { width: 0,   hidden: true }
 };
+
+function columnLetter(n) {
+    let s = '';
+    while (n > 0) {
+        const m = (n - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        n = Math.floor((n - 1) / 26);
+    }
+    return s;
+}
 
 async function initializeSheet() {
     const sheets = getClient();
@@ -96,11 +95,9 @@ async function initializeSheet() {
         console.log('[sheets] Created tab "' + SHEET_NAME + '"');
     }
 
+    // Only write headers if row 1 is empty (preserves manual edits)
     const headerRange = SHEET_NAME + '!A1:' + columnLetter(COLUMNS.length) + '1';
-    const headerCheck = await sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID,
-        range: headerRange
-    });
+    const headerCheck = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: headerRange });
     const headersExist = headerCheck.data.values &&
         headerCheck.data.values.length > 0 &&
         headerCheck.data.values[0].some(c => c && String(c).trim().length > 0);
@@ -113,65 +110,26 @@ async function initializeSheet() {
             requestBody: { values: [COLUMNS.map(c => HEADER_LABELS[c] || c)] }
         });
         console.log('[sheets] Wrote default headers');
-        await applyFormatting(sheets, sheetId);
+        await applyBasicFormatting(sheets, sheetId);
     } else {
         console.log('[sheets] Headers already exist — leaving them untouched');
     }
 }
 
-function columnLetter(n) {
-    let s = '';
-    while (n > 0) {
-        const m = (n - 1) % 26;
-        s = String.fromCharCode(65 + m) + s;
-        n = Math.floor((n - 1) / 26);
-    }
-    return s;
-}
-
-async function applyFormatting(sheets, sheetId) {
+async function applyBasicFormatting(sheets, sheetId) {
     const requests = [];
 
-    requests.push({
-        updateSheetProperties: {
-            properties: { sheetId, gridProperties: { frozenRowCount: 1 } },
-            fields: 'gridProperties.frozenRowCount'
-        }
-    });
-
-    requests.push({
-        repeatCell: {
-            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: COLUMNS.length },
-            cell: {
-                userEnteredFormat: {
-                    backgroundColor: { red: 0.96, green: 0.96, blue: 0.96 },
-                    textFormat: { bold: true, fontSize: 11 },
-                    horizontalAlignment: 'LEFT',
-                    verticalAlignment: 'MIDDLE',
-                    padding: { top: 6, bottom: 6, left: 8, right: 8 }
-                }
-            },
-            fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,padding)'
-        }
-    });
-
-    requests.push({
-        repeatCell: {
-            range: { sheetId, startRowIndex: 1, startColumnIndex: 0, endColumnIndex: COLUMNS.length },
-            cell: {
-                userEnteredFormat: {
-                    verticalAlignment: 'MIDDLE',
-                    padding: { top: 4, bottom: 4, left: 8, right: 8 }
-                }
-            },
-            fields: 'userEnteredFormat(verticalAlignment,padding)'
-        }
-    });
-
+    // Set column widths + hide internal columns
     COLUMNS.forEach((col, i) => {
         const fmt = COLUMN_FORMATS[col];
         if (!fmt) return;
-
+        requests.push({
+            updateDimensionProperties: {
+                range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+                properties: { pixelSize: fmt.width || 100, hiddenByUser: !!fmt.hidden },
+                fields: 'pixelSize,hiddenByUser'
+            }
+        });
         if (fmt.numberFormat) {
             requests.push({
                 repeatCell: {
@@ -181,29 +139,14 @@ async function applyFormatting(sheets, sheetId) {
                 }
             });
         }
-        if (fmt.width !== undefined) {
-            requests.push({
-                updateDimensionProperties: {
-                    range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
-                    properties: { pixelSize: fmt.width || 20, hiddenByUser: !!fmt.hidden },
-                    fields: 'pixelSize,hiddenByUser'
-                }
-            });
-        }
     });
 
+    // Bold the header row — that's the only styling
     requests.push({
-        updateDimensionProperties: {
-            range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
-            properties: { pixelSize: 36 },
-            fields: 'pixelSize'
-        }
-    });
-
-    requests.push({ clearBasicFilter: { sheetId } });
-    requests.push({
-        setBasicFilter: {
-            filter: { range: { sheetId, startRowIndex: 0, startColumnIndex: 0, endColumnIndex: COLUMNS.length } }
+        repeatCell: {
+            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: COLUMNS.length },
+            cell: { userEnteredFormat: { textFormat: { bold: true } } },
+            fields: 'userEnteredFormat.textFormat.bold'
         }
     });
 
@@ -212,9 +155,9 @@ async function applyFormatting(sheets, sheetId) {
             spreadsheetId: SHEET_ID,
             requestBody: { requests }
         });
-        console.log('[sheets] Applied formatting');
+        console.log('[sheets] Applied basic formatting');
     } catch (err) {
-        console.warn('[sheets] Formatting partially applied: ' + err.message);
+        console.warn('[sheets] Formatting skipped: ' + err.message);
     }
 }
 
@@ -226,7 +169,7 @@ function formatDateForSheets(value) {
     }
     if (!(d instanceof Date)) return value;
     const pad = n => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + '/' + d.getFullYear();
 }
 
 const DATE_COLUMNS = new Set(['dob']);
@@ -280,7 +223,6 @@ async function updateRowFields(rowNumber, updates) {
         if (colIdx === -1) return;
         let cell = value;
         if (typeof value === 'boolean') cell = value ? 'Yes' : 'No';
-        if (value instanceof Date) cell = formatDateForSheets(value);
         dataRequests.push({
             range: SHEET_NAME + '!' + columnLetter(colIdx + 1) + rowNumber,
             values: [[cell]]
