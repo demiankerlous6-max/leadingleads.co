@@ -1,6 +1,6 @@
-// Two-step verification for LeadingLeads.co — Vonage Verify v2 API.
-// No 10DLC registration needed: Vonage uses their pre-registered shared
-// infrastructure. We call their API, they generate + send + verify the code.
+// Two-step verification for LeadingLeads.co
+// Uses Vonage Verify v1 REST API directly (bypasses SDK to avoid parameter quirks).
+// No 10DLC registration needed: Vonage uses pre-registered shared infrastructure.
 
 const {
     saveOtp,
@@ -13,37 +13,24 @@ const BRAND = process.env.VONAGE_BRAND || 'LeadingLeads';
 const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES || 10);
 const MAX_ATTEMPTS = 5;
 
-// Lazy-loaded Vonage client
-let vonageClient = null;
-function getVonageClient() {
-    if (vonageClient) return vonageClient;
-    if (!process.env.VONAGE_API_KEY || !process.env.VONAGE_API_SECRET) return null;
-    const { Vonage } = require('@vonage/server-sdk');
-    vonageClient = new Vonage({
-        apiKey: process.env.VONAGE_API_KEY,
-        apiSecret: process.env.VONAGE_API_SECRET
-    });
-    return vonageClient;
-}
+const VONAGE_START_URL = 'https://api.nexmo.com/verify/json';
+const VONAGE_CHECK_URL = 'https://api.nexmo.com/verify/check/json';
 
-// Strip the phone to digits only (Vonage Verify expects no leading +)
 function toE164Digits(phone) {
     return String(phone).replace(/[^\d]/g, '');
 }
 
+function haveCreds() {
+    return Boolean(process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET);
+}
+
 async function sendOtp({ contact, method }) {
-    // method is 'sms' or 'voice' — we'll pass it as the channel to Vonage
-    if (!['sms', 'voice'].includes(method)) {
-        method = 'sms';
-    }
+    if (!['sms', 'voice'].includes(method)) method = 'sms';
 
-    const client = getVonageClient();
-
-    // Demo mode (no credentials configured) — print to console for testing
-    if (!client) {
+    // Demo mode (no credentials configured)
+    if (!haveCreds()) {
         const fakeCode = String(Math.floor(100000 + Math.random() * 900000));
-        console.log(`[DEMO MODE] OTP for ${contact} via ${method}: ${fakeCode}`);
-        // Store the demo code in our local store so verifyOtp can match it
+        console.log('[DEMO MODE] OTP for ' + contact + ' via ' + method + ': ' + fakeCode);
         await saveOtp({
             contact,
             method,
@@ -53,37 +40,51 @@ async function sendOtp({ contact, method }) {
         return { sent: true, demo: true, expiresInMinutes: OTP_EXPIRY_MINUTES };
     }
 
-    // Live mode — call Vonage Verify v1 (uses API key/secret, no Application ID needed)
+    const params = new URLSearchParams({
+        api_key: process.env.VONAGE_API_KEY,
+        api_secret: process.env.VONAGE_API_SECRET,
+        number: toE164Digits(contact),
+        brand: BRAND,
+        code_length: '6',
+        workflow_id: method === 'voice' ? '6' : '1'
+    });
+
+    let result;
     try {
-        const result = await client.verify.start({
-            number: toE164Digits(contact),
-            brand: BRAND,
-            code_length: 6,
-            workflow_id: method === 'voice' ? 6 : 1  // 1 = SMS only, 6 = voice only
+        const response = await fetch(VONAGE_START_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
         });
-
-        if (result.status !== '0') {
-            throw new Error(result.error_text || 'Vonage rejected the request (status ' + result.status + ')');
-        }
-
-        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-        await saveOtp({
-            contact,
-            method,
-            requestId: result.request_id,
-            expiresAt
-        });
-
-        return {
-            sent: true,
-            demo: false,
-            expiresInMinutes: OTP_EXPIRY_MINUTES,
-            requestId: result.request_id
-        };
+        result = await response.json();
     } catch (err) {
-        const detail = err.response && err.response.detail ? err.response.detail : err.message;
-        throw new Error('Vonage Verify failed: ' + detail);
+        throw new Error('Network error contacting Vonage: ' + err.message);
     }
+
+    console.log('[OTP] Vonage verify.start response:', JSON.stringify(result));
+
+    if (result.status !== '0') {
+        throw new Error('Vonage status ' + result.status + ': ' + (result.error_text || 'unknown'));
+    }
+    if (!result.request_id) {
+        throw new Error('Vonage returned no request_id. Full response: ' + JSON.stringify(result));
+    }
+
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    await saveOtp({
+        contact,
+        method,
+        requestId: result.request_id,
+        expiresAt
+    });
+    console.log('[OTP] Saved requestId for ' + contact + ': ' + result.request_id);
+
+    return {
+        sent: true,
+        demo: false,
+        expiresInMinutes: OTP_EXPIRY_MINUTES,
+        requestId: result.request_id
+    };
 }
 
 async function verifyOtp({ contact, code }) {
@@ -95,7 +96,9 @@ async function verifyOtp({ contact, code }) {
         return { verified: false, reason: 'Too many attempts. Please request a new code.' };
     }
 
-    // Demo mode — compare against the in-memory fake code we generated
+    console.log('[OTP] Verifying for ' + contact + ' with requestId: ' + record.requestId);
+
+    // Demo mode — compare against the fake code we stored
     if (record.requestId && record.requestId.startsWith('demo:')) {
         const expectedCode = record.requestId.slice(5);
         if (String(code).trim() === expectedCode) {
@@ -110,37 +113,43 @@ async function verifyOtp({ contact, code }) {
         };
     }
 
-    // Live mode — ask Vonage to verify
-    const client = getVonageClient();
-    if (!client) {
+    if (!haveCreds()) {
         return { verified: false, reason: 'Verification service is not configured.' };
     }
 
+    const params = new URLSearchParams({
+        api_key: process.env.VONAGE_API_KEY,
+        api_secret: process.env.VONAGE_API_SECRET,
+        request_id: record.requestId,
+        code: String(code).trim()
+    });
+
+    let result;
     try {
-        const result = await client.verify.check({
-            requestId: record.requestId,
-            code: String(code).trim()
+        const response = await fetch(VONAGE_CHECK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
         });
-
-        if (result.status === '0') {
-            await markOtpVerified(record.otpId);
-            return { verified: true, method: record.method };
-        }
-
-        await incrementOtpAttempts(record.otpId);
-        return {
-            verified: false,
-            reason: result.error_text || 'Invalid code.',
-            attemptsRemaining: MAX_ATTEMPTS - record.attempts - 1
-        };
+        result = await response.json();
     } catch (err) {
         await incrementOtpAttempts(record.otpId);
-        return {
-            verified: false,
-            reason: 'Invalid code.',
-            attemptsRemaining: MAX_ATTEMPTS - record.attempts - 1
-        };
+        return { verified: false, reason: 'Network error. Please try again.' };
     }
+
+    console.log('[OTP] Vonage verify.check response:', JSON.stringify(result));
+
+    if (result.status === '0') {
+        await markOtpVerified(record.otpId);
+        return { verified: true, method: record.method };
+    }
+
+    await incrementOtpAttempts(record.otpId);
+    return {
+        verified: false,
+        reason: result.error_text || 'Invalid code.',
+        attemptsRemaining: MAX_ATTEMPTS - record.attempts - 1
+    };
 }
 
 module.exports = { sendOtp, verifyOtp };
