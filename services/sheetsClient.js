@@ -45,7 +45,7 @@ const COLUMNS = ['leadId', 'submittedAt', 'name', 'phone', 'email', 'dob', 'stat
 
 const HEADER_LABELS = {
     leadId: 'Lead ID',
-    submittedAt: 'Submitted',
+    submittedAt: 'Submitted Time',
     name: 'Name',
     phone: 'Phone',
     email: 'Email',
@@ -58,7 +58,7 @@ const HEADER_LABELS = {
 
 const COLUMN_FORMATS = {
     leadId:      { width: 0,   hidden: true },
-    submittedAt: { width: 160, numberFormat: { type: 'DATE_TIME', pattern: 'mm/dd/yyyy h:mm am/pm' } },
+    submittedAt: { width: 170, numberFormat: { type: 'DATE_TIME', pattern: 'yyyy-mm-dd HH:mm:ss' } },
     name:        { width: 160 },
     phone:       { width: 140, numberFormat: { type: 'TEXT' } },
     email:       { width: 220 },
@@ -232,7 +232,17 @@ async function getAllRows() {
 
 async function findRowByLeadId(leadId) {
     const all = await getAllRows();
-    return all.find(r => r.leadId === leadId) || null;
+    const found = all.find(r => r.leadId === leadId);
+    if (!found) {
+        console.log('[sheets] findRowByLeadId: NOT FOUND for ' + leadId + '. Total rows: ' + all.length);
+        if (all.length > 0) {
+            console.log('[sheets] First row leadId: ' + all[0].leadId + ' (length ' + (all[0].leadId || '').length + ')');
+            console.log('[sheets] Searched for leadId length: ' + (leadId || '').length);
+        }
+    } else {
+        console.log('[sheets] findRowByLeadId: matched row ' + found._rowNumber + ' for ' + leadId);
+    }
+    return found || null;
 }
 
 async function updateRowFields(rowNumber, updates) {
