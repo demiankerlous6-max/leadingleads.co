@@ -1,6 +1,5 @@
 // Two-step verification for LeadingLeads.co
 // Uses Vonage Verify v1 REST API directly (bypasses SDK to avoid parameter quirks).
-// No 10DLC registration needed: Vonage uses pre-registered shared infrastructure.
 
 const {
     saveOtp,
@@ -10,14 +9,17 @@ const {
 } = require('./dataStore');
 
 const BRAND = process.env.VONAGE_BRAND || 'LeadingLeads';
-const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES || 10);
+const OTP_EXPIRY_MINUTES = Number(process.env.OTP_EXPIRY_MINUTES || 2);
+const PIN_EXPIRY_SECONDS = 120; // 2 minutes
 const MAX_ATTEMPTS = 5;
 
 const VONAGE_START_URL = 'https://api.nexmo.com/verify/json';
 const VONAGE_CHECK_URL = 'https://api.nexmo.com/verify/check/json';
 
 function toE164Digits(phone) {
-    return String(phone).replace(/[^\d]/g, '');
+    let digits = String(phone).replace(/[^\d]/g, '');
+    if (digits.length === 10) digits = '1' + digits;
+    return digits;
 }
 
 function haveCreds() {
@@ -27,7 +29,6 @@ function haveCreds() {
 async function sendOtp({ contact, method }) {
     if (!['sms', 'voice'].includes(method)) method = 'sms';
 
-    // Demo mode (no credentials configured)
     if (!haveCreds()) {
         const fakeCode = String(Math.floor(100000 + Math.random() * 900000));
         console.log('[DEMO MODE] OTP for ' + contact + ' via ' + method + ': ' + fakeCode);
@@ -46,7 +47,8 @@ async function sendOtp({ contact, method }) {
         number: toE164Digits(contact),
         brand: BRAND,
         code_length: '6',
-        workflow_id: method === 'voice' ? '6' : '1'
+        workflow_id: method === 'voice' ? '6' : '1',
+        pin_expiry: String(PIN_EXPIRY_SECONDS)
     });
 
     let result;
@@ -62,6 +64,25 @@ async function sendOtp({ contact, method }) {
     }
 
     console.log('[OTP] Vonage verify.start response:', JSON.stringify(result));
+
+    // Status 10 = concurrent verification — adopt the existing request_id
+    if (result.status === '10' && result.request_id) {
+        console.log('[OTP] Adopting existing concurrent request_id: ' + result.request_id);
+        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+        await saveOtp({
+            contact,
+            method,
+            requestId: result.request_id,
+            expiresAt
+        });
+        return {
+            sent: true,
+            demo: false,
+            reused: true,
+            expiresInMinutes: OTP_EXPIRY_MINUTES,
+            requestId: result.request_id
+        };
+    }
 
     if (result.status !== '0') {
         throw new Error('Vonage status ' + result.status + ': ' + (result.error_text || 'unknown'));
@@ -98,7 +119,6 @@ async function verifyOtp({ contact, code }) {
 
     console.log('[OTP] Verifying for ' + contact + ' with requestId: ' + record.requestId);
 
-    // Demo mode — compare against the fake code we stored
     if (record.requestId && record.requestId.startsWith('demo:')) {
         const expectedCode = record.requestId.slice(5);
         if (String(code).trim() === expectedCode) {
