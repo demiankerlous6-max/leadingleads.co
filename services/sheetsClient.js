@@ -151,6 +151,8 @@ async function applyBasicFormatting(sheets, sheetId) {
     }
 }
 
+const LOCAL_TIMEZONE = process.env.LOCAL_TIMEZONE || 'America/New_York';
+
 function formatDateForSheets(value) {
     let d = value;
     if (typeof value === 'string') {
@@ -158,10 +160,17 @@ function formatDateForSheets(value) {
         if (isNaN(d.getTime())) return value;
     }
     if (!(d instanceof Date)) return value;
-    const pad = n => String(n).padStart(2, '0');
-    // Always include time — Sheets respects the column format
-    // (DATE columns show just the date, DATE_TIME columns show both)
-    return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    // Format the date in the local timezone (defaults to America/New_York / EST)
+    // so timestamps reflect the user's actual local time, not UTC.
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: LOCAL_TIMEZONE,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    }).formatToParts(d);
+    const get = type => (parts.find(p => p.type === type) || {}).value || '';
+    // Output: "MM/DD/YYYY HH:MM:SS" — Sheets will display per the column format
+    return get('month') + '/' + get('day') + '/' + get('year') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second');
 }
 
 const DATE_COLUMNS = new Set(['dob', 'submittedAt']);
@@ -253,10 +262,9 @@ async function updateRowFields(rowNumber, updates) {
         if (colIdx === -1) return;
         let cell = value;
         if (typeof value === 'boolean') cell = value ? 'Yes' : 'No';
-        dataRequests.push({
-            range: SHEET_NAME + '!' + columnLetter(colIdx + 1) + rowNumber,
-            values: [[cell]]
-        });
+        const range = SHEET_NAME + '!' + columnLetter(colIdx + 1) + rowNumber;
+        console.log('[sheets] updateRowFields: writing "' + cell + '" to ' + range);
+        dataRequests.push({ range, values: [[cell]] });
     });
     if (dataRequests.length === 0) return;
     await sheets.spreadsheets.values.batchUpdate({
