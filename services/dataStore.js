@@ -103,10 +103,10 @@ setInterval(() => {
     }
 }, 5 * 60 * 1000);
 
-async function saveOtp({ contact, method, codeHash, expiresAt }) {
+async function saveOtp({ contact, method, requestId, expiresAt }) {
     const otpId = uuidv4();
     otpStore.set(contact, {
-        otpId, method, codeHash,
+        otpId, method, requestId,
         expiresAt: new Date(expiresAt),
         verified: false, attempts: 0,
         createdAt: new Date()
@@ -124,7 +124,7 @@ async function findActiveOtp(contact) {
     }
     return {
         otpId: entry.otpId,
-        codeHash: entry.codeHash,
+        requestId: entry.requestId,
         expiresAt: entry.expiresAt,
         attempts: entry.attempts,
         method: entry.method
