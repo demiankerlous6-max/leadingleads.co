@@ -118,7 +118,7 @@ async function verifyOtp({ contact, code }) {
 
     try {
         const result = await client.verify.check({
-            request_id: record.requestId,
+            requestId: record.requestId,
             code: String(code).trim()
         });
 

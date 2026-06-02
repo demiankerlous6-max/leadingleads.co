@@ -92,7 +92,7 @@ console.log('\nStarting Verify request for ' + RECIPIENT + ' ...');
     if (code) {
         console.log('\nVerifying code "' + code + '" against request ' + passedRequestId + ' ...');
         try {
-            const result = await client.verify.check({ request_id: passedRequestId, code: code });
+            const result = await client.verify.check({ requestId: passedRequestId, code: code });
             if (result.status === '0') {
                 ok('Code verified successfully!');
                 console.log('\n\x1b[32mAll set! Vonage Verify is working end-to-end.\x1b[0m\n');
