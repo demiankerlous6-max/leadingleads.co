@@ -213,9 +213,8 @@ async function appendRow(rowObject) {
     // Range A1 anchors the search to the table starting at row 1.
     await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: SHEET_NAME + '!A1',
+        range: SHEET_NAME + '!A1:' + columnLetter(COLUMNS.length),
         valueInputOption: 'USER_ENTERED',
-        insertDataOption: 'INSERT_ROWS',
         requestBody: { values: [row] }
     });
 }
