@@ -3,12 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LeadingLeads.co — Life Insurance Made Simple</title>
-    <meta name="description" content="Compare life insurance policies and get an instant quote tailored to you. Term life, whole life, and universal life policies.">
+    <title>LeadingLeads.co — Final Expense Insurance Made Simple</title>
+    <meta name="description" content="Get a personalized final expense quote in 60 seconds. Cover funeral, medical, and end-of-life costs. Ages 50–85, no medical exam.">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .hero-headline { font-size: 56px; font-weight: 800; letter-spacing: -0.03em; color: var(--dark); line-height: 1.05; margin-bottom: 16px; }
+        .hero-headline .accent { color: var(--primary); }
+        .hero-headline .gold { color: var(--accent); }
+        .hero-eyebrow { display: inline-block; background: white; padding: 6px 14px; border-radius: 100px; font-weight: 600; font-size: 13px; color: var(--primary); margin-bottom: 18px; border: 1px solid rgba(4,120,87,.15); }
+        .hero-eyebrow .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 2px; }
+        .feature-card { background: white; padding: 28px; border-radius: var(--radius-lg); border: 1px solid var(--gray-100); transition: transform 0.2s, box-shadow 0.2s; }
+        .feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .feature-card .ic { width: 52px; height: 52px; border-radius: var(--radius); background: var(--primary-light); color: var(--primary); display: grid; place-items: center; font-size: 24px; font-weight: 800; margin-bottom: 18px; }
+        .feature-card .gold-ic { background: var(--accent-light); color: var(--accent-dark); }
+        .stat-strip { background: var(--dark); color: white; padding: 36px 0; text-align: center; }
+        .stat-strip .container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 24px; }
+        .stat-strip strong { display: block; font-size: 36px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; }
+        .stat-strip span { font-size: 13px; opacity: 0.8; }
+        .cta-banner { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; text-align: center; padding: 64px 24px; }
+        .cta-banner h2 { font-size: 36px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.02em; }
+        .cta-banner p { font-size: 18px; opacity: 0.9; margin-bottom: 28px; }
+        .cta-banner .btn-accent { padding: 14px 32px; font-size: 16px; }
+    </style>
 </head>
 <body>
     <header class="navbar">
@@ -24,29 +43,41 @@
     <section class="hero">
         <div class="container hero-inner">
             <div class="hero-text">
-                <span class="badge">Instant quote in under 2 minutes</span>
-                <h1>Life insurance shouldn't be a maze.</h1>
-                <p class="lead">Compare term, whole, and universal life policies, and get a personalized quote based on your real situation — not a guess. No spam. No hidden fees.</p>
+                <span class="hero-eyebrow"><span class="dot"></span> Real rates from real carriers</span>
+                <h1 class="hero-headline">
+                    Protect your family from <span class="accent">final expenses</span>.<br>
+                    Quoted in <span class="gold">60 seconds</span>.
+                </h1>
+                <p class="lead">Final expense insurance covers funeral, medical, and end-of-life costs so your loved ones don't have to. $1,000 to $50,000 in coverage. Ages 50–85. No medical exam.</p>
                 <div class="hero-cta">
-                    <a href="/quote.html" class="btn btn-primary">Get My Quote</a>
-                    <a href="/policies.html" class="btn btn-secondary">See Policy Types</a>
+                    <a href="/quote.html" class="btn btn-primary btn-large">Get My Quote</a>
+                    <a href="/policies.html" class="btn btn-secondary">See How It Works</a>
                 </div>
                 <div class="trust-row">
-                    <div><strong>5</strong><span>Policy types</span></div>
-                    <div><strong>50</strong><span>States covered</span></div>
-                    <div><strong>2 min</strong><span>Quote time</span></div>
+                    <div><strong>$1K–$50K</strong><span>Coverage range</span></div>
+                    <div><strong>50–85</strong><span>Eligible ages</span></div>
+                    <div><strong>~60 sec</strong><span>To get quoted</span></div>
                 </div>
             </div>
             <div class="hero-card">
-                <h3>What you'll get</h3>
+                <h3>What's included in your quote</h3>
                 <ul class="checklist">
-                    <li>Personalized monthly premium estimate</li>
-                    <li>Health classification (Preferred Plus, Preferred, Standard)</li>
-                    <li>Side-by-side comparison of policy types</li>
-                    <li>Secure 2-step verification (email or phone)</li>
+                    <li>Real-time pricing from 2026 carrier rate tables</li>
+                    <li>Coverage Type options: Level, Graded, Modified</li>
+                    <li>SMS-verified for accuracy (your data stays yours)</li>
+                    <li>A licensed agent follows up within 1 business day</li>
                 </ul>
                 <a href="/quote.html" class="btn btn-primary btn-block">Start Free Quote</a>
             </div>
+        </div>
+    </section>
+
+    <section class="stat-strip">
+        <div class="container">
+            <div><strong>3</strong><span>Coverage types</span></div>
+            <div><strong>50</strong><span>States covered</span></div>
+            <div><strong>$50K</strong><span>Max coverage</span></div>
+            <div><strong>~$8K</strong><span>Avg US funeral cost</span></div>
         </div>
     </section>
 
@@ -54,50 +85,38 @@
         <div class="container">
             <h2 class="section-title">Why LeadingLeads.co?</h2>
             <div class="grid grid-3">
-                <div class="feature">
-                    <div class="icon">$</div>
-                    <h3>Transparent Pricing</h3>
-                    <p>Our quote engine uses public actuarial data from 2026 industry reports. You'll see exactly how age, health, smoking, and coverage shape your premium.</p>
+                <div class="feature-card">
+                    <div class="ic">$</div>
+                    <h3>Honest pricing</h3>
+                    <p>Rates from real 2026 carrier tables. The number you see is the number agents work from.</p>
                 </div>
-                <div class="feature">
-                    <div class="icon">✓</div>
-                    <h3>Verified Leads Only</h3>
-                    <p>Every quote is verified with a two-step email or SMS code, so you stay in control of who reaches out to you.</p>
+                <div class="feature-card">
+                    <div class="ic gold-ic">&#10003;</div>
+                    <h3>Verified leads only</h3>
+                    <p>Every quote SMS-verified. Your phone stays with us  not sold, not shared.</p>
                 </div>
-                <div class="feature">
-                    <div class="icon">⚡</div>
-                    <h3>2-Minute Quote</h3>
-                    <p>Skip the back-and-forth. Answer 8 short questions and get a real number instantly — no exam, no phone call required.</p>
+                <div class="feature-card">
+                    <div class="ic">&#9889;</div>
+                    <h3>60-second quote</h3>
+                    <p>No medical exam. No paperwork. Real rate in under a minute.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="section section-alt">
+    <section class="cta-banner">
         <div class="container">
-            <h2 class="section-title">Policy Types We Compare</h2>
-            <div id="policy-preview" class="grid grid-3"></div>
-            <div class="center">
-                <a href="/policies.html" class="btn btn-secondary">See All Policies</a>
-            </div>
-        </div>
-    </section>
-
-    <section class="section cta-section">
-        <div class="container">
-            <h2>Ready to see your number?</h2>
-            <p>It takes about 2 minutes. No credit check, no commitment.</p>
-            <a href="/quote.html" class="btn btn-primary btn-large">Get My Quote</a>
+            <h2>Get peace of mind in 60 seconds.</h2>
+            <p>No exam. No commitment. Real rates from licensed carriers.</p>
+            <a href="/quote.html" class="btn btn-accent">Get My Quote</a>
         </div>
     </section>
 
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2026 LeadingLeads.co. Quotes are estimates based on public industry data. Final rates depend on underwriter approval and may vary.</p>
-            <p style="margin-top:8px;"><a href="/privacy.html" style="color:#fff">Privacy Policy</a> · <a href="/terms.html" style="color:#fff">Terms of Service</a></p>
+            <p>&copy; 2026 LeadingLeads.co. Final expense quotes from real 2026 carrier rate tables.</p>
+            <p style="margin-top:8px;"><a href="/privacy.html" style="color:#fff">Privacy Policy</a> &middot; <a href="/terms.html" style="color:#fff">Terms of Service</a></p>
         </div>
     </footer>
-
-    <script src="/js/main.js"></script>
 </body>
 </html>
