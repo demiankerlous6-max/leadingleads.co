@@ -28,7 +28,10 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https:"]
+            imgSrc: ["'self'", "data:", "https:"],
+            // Allow embedding the FEX Lite final-expense quoter from Insurance Toolkits
+            frameSrc: ["'self'", "https://insurancetoolkits.com", "https://app.insurancetoolkits.com"],
+            connectSrc: ["'self'", "https://insurancetoolkits.com", "https://app.insurancetoolkits.com"]
         }
     }
 }));
