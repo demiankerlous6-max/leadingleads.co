@@ -5,147 +5,224 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Final Expense Quote — LeadingLeads.co</title>
     <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <style>
-        /* LeadingLeads quote-page custom branding — self-contained emerald + gold theme */
+        /* ============================================
+           LeadingLeads quote-page — original brand theme
+           Navy + Coral + Cream
+           ============================================ */
         :root {
-            --ll-emerald:      #047857;
-            --ll-emerald-dark: #065F46;
-            --ll-gold:         #D4A017;
-            --ll-emerald-soft: #D1FAE5;
-            --ll-cream:        #FDFAF5;
+            --ll-navy:        #1E2A5A;
+            --ll-navy-dark:   #15204A;
+            --ll-coral:       #FF6B47;
+            --ll-coral-dark:  #E55230;
+            --ll-cream:       #FAF6EE;
+            --ll-cream-deep:  #F2EAD8;
+            --ll-gold:        #C9A227;
+            --ll-text:        #1A1D2E;
+            --ll-muted:       #6B7280;
+            --ll-line:        #E5E1D6;
         }
-        body { background: var(--ll-cream); }
-        .ll-hero-strip {
-            background: linear-gradient(135deg, #ECFDF5 0%, #FEF3C7 100%);
-            padding: 36px 0 16px;
-            text-align: center;
-        }
-        .ll-hero-strip h1 {
-            font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
-            color: #0B2434; margin-bottom: 6px;
-        }
-        .ll-hero-strip p { color: #334155; font-size: 16px; max-width: 480px; margin: 0 auto 18px; }
-        .ll-trust-badges {
-            display: flex; justify-content: center; gap: 18px; flex-wrap: wrap;
-            font-size: 13px; color: #334155; margin-bottom: 12px;
-        }
-        .ll-trust-badges span { display: inline-flex; align-items: center; gap: 6px; }
-        .ll-trust-badges strong { color: var(--ll-emerald); }
 
+        body { background: var(--ll-cream); font-family: 'Inter', sans-serif; color: var(--ll-text); }
+
+        /* ============ Hero strip ============ */
+        .ll-hero {
+            background: var(--ll-navy);
+            color: white;
+            padding: 48px 24px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .ll-hero::before {
+            content: "";
+            position: absolute; bottom: -1px; left: 0; right: 0; height: 32px;
+            background: var(--ll-cream);
+            clip-path: polygon(0 100%, 100% 100%, 100% 50%, 50% 0, 0 50%);
+        }
+        .ll-hero h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 38px; font-weight: 400; letter-spacing: -0.01em;
+            margin-bottom: 8px;
+        }
+        .ll-hero h1 .accent { color: var(--ll-coral); font-style: italic; }
+        .ll-hero p { color: #C9D4F5; font-size: 16px; max-width: 480px; margin: 0 auto 22px; }
+        .ll-badges { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+        .ll-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,.08); padding: 6px 14px; border-radius: 100px;
+            font-size: 12px; font-weight: 500; backdrop-filter: blur(6px);
+        }
+        .ll-badge .check {
+            width: 16px; height: 16px; background: var(--ll-coral); color: white;
+            border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700;
+        }
+
+        /* ============ The Quote Card ============ */
         .ll-card {
-            max-width: 600px; margin: -8px auto 60px;
+            max-width: 620px; margin: -40px auto 60px;
             background: white;
-            border-radius: 16px;
-            border: 1px solid rgba(212,160,23,.20);
-            box-shadow: 0 6px 18px rgba(11,36,52,.10);
-            padding: 36px 32px;
+            border-radius: 20px;
+            box-shadow: 0 24px 60px rgba(30,42,90,.12);
+            padding: 40px 36px;
             position: relative;
         }
-        .ll-card::before {
-            content: ""; position: absolute; top: 0; left: 24px; right: 24px; height: 4px;
-            background: linear-gradient(90deg, var(--ll-emerald), var(--ll-gold));
-            border-radius: 0 0 8px 8px;
+        /* Corner tag like a price label */
+        .ll-card .corner-tag {
+            position: absolute; top: -14px; right: 24px;
+            background: var(--ll-coral); color: white;
+            font-size: 11px; font-weight: 700; padding: 8px 14px;
+            border-radius: 8px; letter-spacing: 0.06em;
+            text-transform: uppercase;
+            box-shadow: 0 6px 14px rgba(255,107,71,.30);
         }
-        .ll-card h2 {
-            text-align: center; font-size: 24px; font-weight: 700;
-            color: #0B2434; margin-bottom: 8px;
+        .ll-card .corner-tag::after {
+            content: ""; position: absolute; bottom: -6px; left: 14px;
+            width: 0; height: 0;
+            border-top: 6px solid var(--ll-coral-dark);
+            border-left: 6px solid transparent;
         }
-        .ll-card .ll-subtitle { text-align: center; color: #64748B; font-size: 14px; margin-bottom: 28px; }
 
-        .fex-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-        .fex-row label { font-weight: 600; font-size: 13px; color: #1E293B; min-width: 120px; }
+        .ll-card h2 {
+            font-family: 'DM Serif Display', serif;
+            text-align: center; font-size: 28px; font-weight: 400;
+            color: var(--ll-text); margin-bottom: 4px;
+        }
+        .ll-card .ll-subtitle { text-align: center; color: var(--ll-muted); font-size: 14px; margin-bottom: 32px; }
+
+        /* Numbered section circles */
+        .ll-section {
+            display: flex; align-items: center; gap: 10px;
+            margin: 32px 0 16px;
+            font-size: 12px; font-weight: 700; color: var(--ll-navy);
+            text-transform: uppercase; letter-spacing: 0.10em;
+        }
+        .ll-section .num {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--ll-navy); color: white;
+            display: grid; place-items: center; font-size: 12px; font-weight: 700;
+            font-family: 'DM Serif Display', serif;
+        }
+        .ll-section .line {
+            flex: 1; height: 1px;
+            background: linear-gradient(90deg, var(--ll-line), transparent);
+        }
+
+        /* Form rows */
+        .fex-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .fex-row label { font-weight: 600; font-size: 13px; color: var(--ll-text); min-width: 110px; }
 
         .fex-pill {
-            padding: 10px 22px; border-radius: 100px; border: 1.5px solid #CBD5E1;
+            padding: 10px 22px; border-radius: 100px; border: 1.5px solid var(--ll-line);
             background: white; cursor: pointer; font-size: 14px; font-weight: 500;
-            color: #334155; transition: all 0.18s;
+            color: var(--ll-muted); transition: all 0.2s;
         }
-        .fex-pill:hover { border-color: var(--ll-emerald); color: var(--ll-emerald); }
+        .fex-pill:hover { border-color: var(--ll-coral); color: var(--ll-coral); }
         .fex-pill.active {
-            background: var(--ll-emerald);
-            border-color: var(--ll-emerald);
+            background: var(--ll-coral); border-color: var(--ll-coral);
             color: white; font-weight: 600;
-            box-shadow: 0 2px 8px rgba(4,120,87,.30);
+            box-shadow: 0 4px 14px rgba(255,107,71,.30);
+            transform: translateY(-1px);
         }
         .fex-mini-pills { display: flex; gap: 6px; }
-        .fex-mini-pills .fex-pill { padding: 7px 16px; font-size: 13px; }
+        .fex-mini-pills .fex-pill { padding: 8px 18px; font-size: 13px; }
 
         .fex-row select, .fex-row input {
             flex: 1; min-width: 0; padding: 11px 14px;
-            border: 1.5px solid #CBD5E1; border-radius: 10px;
+            border: 1.5px solid var(--ll-line); border-radius: 10px;
             font-size: 14px; font-family: inherit; background: white;
-            transition: border-color 0.15s;
+            color: var(--ll-text);
+            transition: all 0.15s;
         }
         .fex-row select:focus, .fex-row input:focus {
-            outline: none; border-color: var(--ll-emerald);
-            box-shadow: 0 0 0 3px var(--ll-emerald-soft);
+            outline: none; border-color: var(--ll-navy);
+            box-shadow: 0 0 0 3px rgba(30,42,90,.12);
         }
         .fex-row .small { max-width: 72px; flex: 0 1 72px; text-align: center; }
-        .fex-row .or { font-size: 13px; color: #64748B; padding: 0 4px; font-style: italic; }
+        .fex-row .or { font-size: 13px; color: var(--ll-muted); padding: 0 4px; font-style: italic; }
 
-        .fex-section-title {
-            font-size: 12px; font-weight: 700; color: var(--ll-emerald);
-            margin: 28px 0 12px; text-transform: uppercase; letter-spacing: 0.08em;
-            display: flex; align-items: center; gap: 8px;
+        /* Slider — animated price */
+        .fex-slider-row {
+            margin: 12px 0 20px; padding: 22px 20px;
+            background: linear-gradient(135deg, var(--ll-cream) 0%, var(--ll-cream-deep) 100%);
+            border-radius: 14px; border: 1px solid var(--ll-line);
+            position: relative;
         }
-        .fex-section-title::after {
-            content: ""; flex: 1; height: 1px; background: #F1F5F9;
-        }
-
-        .fex-slider-row { margin: 8px 0 20px; padding: 18px 16px; background: #F8FAFC;
-                          border-radius: 12px; border: 1px solid #F1F5F9; }
         .fex-slider-value {
-            font-size: 32px; font-weight: 800; color: var(--ll-emerald); text-align: center;
-            letter-spacing: -0.02em; margin-bottom: 12px;
+            font-family: 'DM Serif Display', serif;
+            font-size: 44px; font-weight: 400; color: var(--ll-navy); text-align: center;
+            letter-spacing: -0.02em; margin-bottom: 4px;
+            transition: transform 0.15s;
         }
+        .fex-slider-row.bump .fex-slider-value { transform: scale(1.05); }
+        .fex-slider-label { text-align: center; font-size: 12px; color: var(--ll-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
         .fex-slider-row input[type="range"] {
-            width: 100%; height: 6px; background: #CBD5E1; border-radius: 100px;
+            width: 100%; height: 6px; background: var(--ll-line); border-radius: 100px;
             -webkit-appearance: none; appearance: none;
         }
         .fex-slider-row input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none; appearance: none;
-            width: 22px; height: 22px; border-radius: 50%;
-            background: var(--ll-gold); border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(212,160,23,.40);
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--ll-coral); border: 4px solid white;
+            box-shadow: 0 3px 10px rgba(255,107,71,.40);
             cursor: pointer;
+            transition: transform 0.1s;
         }
-        .fex-range-labels { display: flex; justify-content: space-between; font-size: 12px;
-                            color: #64748B; margin-top: 8px; }
+        .fex-slider-row input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+        .fex-range-labels { display: flex; justify-content: space-between; font-size: 11px;
+                            color: var(--ll-muted); margin-top: 10px; font-weight: 600; }
 
+        /* Submit button */
         .fex-submit {
-            width: 100%; padding: 16px; font-size: 16px; font-weight: 700;
-            background: var(--ll-emerald); color: white;
+            width: 100%; padding: 18px; font-size: 16px; font-weight: 700;
+            background: var(--ll-navy); color: white;
             border: none; border-radius: 12px;
-            cursor: pointer; margin-top: 22px;
-            box-shadow: 0 4px 14px rgba(4,120,87,.30);
-            transition: all 0.15s;
-            letter-spacing: 0.01em;
+            cursor: pointer; margin-top: 24px;
+            box-shadow: 0 6px 18px rgba(30,42,90,.30);
+            transition: all 0.18s;
+            letter-spacing: 0.02em;
+            position: relative; overflow: hidden;
+        }
+        .fex-submit::after {
+            content: " →"; transition: transform 0.2s;
         }
         .fex-submit:hover {
-            background: var(--ll-emerald-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(4,120,87,.40);
+            background: var(--ll-navy-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(30,42,90,.40);
         }
+        .fex-submit:hover::after { transform: translateX(4px); display: inline-block; }
 
-        .fex-error { color: #DC2626; font-size: 12px; font-weight: 500; margin-top: 3px; display: block; }
-        .input-error { border-color: #DC2626 !important; }
+        .fex-error { color: var(--ll-coral-dark); font-size: 12px; font-weight: 500; margin-top: 3px; display: block; }
+        .input-error { border-color: var(--ll-coral-dark) !important; }
 
         .fex-consent {
-            background: #F8FAFC;
-            border: 1px solid #F1F5F9; border-radius: 12px;
+            background: var(--ll-cream);
+            border: 1px solid var(--ll-line); border-radius: 12px;
             padding: 14px 16px; margin-top: 22px;
         }
         .fex-consent label { display: flex; align-items: flex-start; gap: 10px; font-size: 12px;
-                              color: #334155; line-height: 1.5; cursor: pointer; }
-        .fex-consent input { margin-top: 3px; flex-shrink: 0; accent-color: var(--ll-emerald); }
-        .fex-consent a { color: var(--ll-emerald); text-decoration: underline; }
+                              color: var(--ll-muted); line-height: 1.5; cursor: pointer; }
+        .fex-consent input { margin-top: 3px; flex-shrink: 0; accent-color: var(--ll-navy); width: 16px; height: 16px; }
+        .fex-consent a { color: var(--ll-navy); text-decoration: underline; font-weight: 500; }
+
+        /* Result card */
+        .ll-result-num {
+            font-family: 'DM Serif Display', serif;
+            font-size: 64px; font-weight: 400; color: var(--ll-coral);
+            text-align: center; letter-spacing: -0.03em; margin: 16px 0 8px;
+            line-height: 1;
+        }
+        .ll-result-num .per-mo { font-size: 18px; color: var(--ll-muted); font-family: 'Inter', sans-serif; }
+        .ll-result-meta { text-align: center; color: var(--ll-muted); font-size: 14px; margin-bottom: 8px; }
+        .ll-result-meta strong { color: var(--ll-navy); }
 
         @media (max-width: 600px) {
             .fex-row { flex-direction: column; align-items: stretch; }
             .fex-row label { min-width: 0; }
-            .ll-card { padding: 28px 20px; margin: 0 12px 40px; }
-            .ll-hero-strip h1 { font-size: 26px; }
+            .ll-card { padding: 32px 22px; margin: -28px 14px 40px; }
+            .ll-hero h1 { font-size: 30px; }
         }
     </style>
 </head>
@@ -160,22 +237,26 @@
         </div>
     </header>
 
-    <section class="ll-hero-strip">
-        <h1>Final Expense Quote</h1>
-        <p>Cover funeral, medical, and end-of-life costs from $1K to $50K. Get your real rate in 60 seconds.</p>
-        <div class="ll-trust-badges">
-            <span>✓ <strong>No medical exam</strong></span>
-            <span>✓ <strong>Licensed in all 50 states</strong></span>
-            <span>✓ <strong>Ages 50–85</strong></span>
+    <section class="ll-hero">
+        <h1>Your final expense quote, <span class="accent">in minutes</span>.</h1>
+        <p>Real 2026 carrier pricing. No medical exam. Ages 50–85, coverage from $1K to $50K.</p>
+        <div class="ll-badges">
+            <span class="ll-badge"><span class="check">✓</span> No medical exam</span>
+            <span class="ll-badge"><span class="check">✓</span> All 50 states</span>
+            <span class="ll-badge"><span class="check">✓</span> SMS-verified</span>
         </div>
     </section>
 
     <section class="ll-card" id="quote-card">
-        <h2>Get Your Quote</h2>
-        <p class="ll-subtitle">Pricing built from real 2026 carrier rate tables.</p>
+        <span class="corner-tag">Free Quote</span>
+
+        <h2>Find your rate</h2>
+        <p class="ll-subtitle">8 short questions. Real pricing.</p>
 
         <form id="quote-form" novalidate>
-            <!-- Mode toggle: Face Amount or Premium -->
+
+            <div class="ll-section"><span class="num">1</span> Coverage <div class="line"></div></div>
+
             <div class="fex-row" style="justify-content: center;">
                 <button type="button" class="fex-pill active" data-mode="face">Face Amount</button>
                 <span class="or">or</span>
@@ -185,16 +266,33 @@
             <div class="fex-row">
                 <label for="coverageType">Coverage Type</label>
                 <select id="coverageType" name="coverageType">
-                    <option value="level">Level</option>
-                    <option value="graded">Graded</option>
-                    <option value="modified">Modified</option>
+                    <option value="level">Level — best rates</option>
+                    <option value="graded">Graded — mild concerns</option>
+                    <option value="modified">Modified — chronic conditions</option>
                 </select>
             </div>
 
-            <div class="fex-row">
-                <label for="state">State</label>
-                <select id="state" name="state" required></select>
+            <div class="fex-slider-row" id="face-section">
+                <div class="fex-slider-label">Coverage Amount</div>
+                <div class="fex-slider-value" id="coverage-display">$10,000</div>
+                <input type="range" id="coverageAmount" name="coverageAmount" min="1000" max="50000" step="500" value="10000">
+                <div class="fex-range-labels">
+                    <span>$1K</span>
+                    <span>$50K</span>
+                </div>
             </div>
+
+            <div class="fex-slider-row" id="premium-section" hidden>
+                <div class="fex-slider-label">Monthly Budget</div>
+                <div class="fex-slider-value" id="premium-display">$50<span style="font-size:18px;color:#6B7280;font-family:Inter,sans-serif;"> /mo</span></div>
+                <input type="range" id="premiumBudget" min="20" max="200" step="5" value="50">
+                <div class="fex-range-labels">
+                    <span>$20/mo</span>
+                    <span>$200/mo</span>
+                </div>
+            </div>
+
+            <div class="ll-section"><span class="num">2</span> About you <div class="line"></div></div>
 
             <div class="fex-row">
                 <label>Sex</label>
@@ -203,6 +301,11 @@
                     <button type="button" class="fex-pill" data-sex="female">Female</button>
                 </div>
                 <input type="hidden" id="gender" name="gender" value="male">
+            </div>
+
+            <div class="fex-row">
+                <label for="state">State</label>
+                <select id="state" name="state" required></select>
             </div>
 
             <div class="fex-row">
@@ -225,29 +328,7 @@
                 </select>
             </div>
 
-            <!-- Face Amount section (default visible) -->
-            <div class="fex-slider-row" id="face-section">
-                <div class="fex-section-title">Coverage Amount</div>
-                <div class="fex-slider-value" id="coverage-display">$10,000</div>
-                <input type="range" id="coverageAmount" name="coverageAmount" min="1000" max="50000" step="500" value="10000">
-                <div class="fex-range-labels">
-                    <span>$1K</span>
-                    <span>$50K</span>
-                </div>
-            </div>
-
-            <!-- Premium section (hidden by default) -->
-            <div class="fex-slider-row" id="premium-section" hidden>
-                <div class="fex-section-title">Monthly Budget</div>
-                <div class="fex-slider-value" id="premium-display">$50/mo</div>
-                <input type="range" id="premiumBudget" min="20" max="200" step="5" value="50">
-                <div class="fex-range-labels">
-                    <span>$20/mo</span>
-                    <span>$200/mo</span>
-                </div>
-            </div>
-
-            <div class="fex-section-title">Contact Info</div>
+            <div class="ll-section"><span class="num">3</span> Contact <div class="line"></div></div>
 
             <div class="fex-row">
                 <label for="firstName">First Name</label>
@@ -278,23 +359,23 @@
     </section>
 
     <section class="ll-card" id="result-card" hidden>
+        <span class="corner-tag">Verified</span>
         <div id="otp-section">
             <h2>Verify your phone</h2>
-            <p class="ll-subtitle">We just texted a 6-digit code to <strong id="otp-contact"></strong>.</p>
+            <p class="ll-subtitle">We just texted a 6-digit code to <strong id="otp-contact"></strong></p>
             <input type="text" id="otp-code" maxlength="6" inputmode="numeric"
-                   style="width:100%; padding:14px; font-size:24px; text-align:center; letter-spacing:10px; font-family:monospace; border:1.5px solid var(--gray-300); border-radius:10px; margin-bottom:14px;"
+                   style="width:100%;padding:16px;font-size:28px;text-align:center;letter-spacing:14px;font-family:'DM Serif Display',serif;border:1.5px solid #E5E1D6;border-radius:12px;margin:12px 0 14px;color:#1E2A5A;"
                    placeholder="------">
             <div id="otp-error" class="alert alert-error" hidden></div>
             <button class="fex-submit" id="otp-verify-btn">Verify &amp; Show My Quote</button>
-            <button class="btn btn-link" id="otp-resend-btn" style="display:block;margin:14px auto 0;">Resend code</button>
+            <button class="btn btn-link" id="otp-resend-btn" style="display:block;margin:14px auto 0;color:#1E2A5A;">Resend code</button>
         </div>
-
         <div id="quote-section" hidden>
-            <h2>Your Estimated Quote</h2>
-            <div style="text-align:center;font-size:48px;font-weight:800;color:var(--primary);margin:12px 0;letter-spacing:-0.02em;" id="result-monthly">$0</div>
-            <p style="text-align:center;color:var(--gray-500);" id="result-annual"></p>
-            <p style="text-align:center;margin-top:12px;">Plan: <strong id="result-class"></strong></p>
-            <p style="text-align:center;color:var(--gray-500);font-size:14px;margin-top:18px;">A licensed agent will reach out within 1 business day to finalize your coverage.</p>
+            <h2>Your estimated rate</h2>
+            <div class="ll-result-num" id="result-monthly">$0<span class="per-mo"> /mo</span></div>
+            <p class="ll-result-meta" id="result-annual"></p>
+            <p class="ll-result-meta">Plan: <strong id="result-class"></strong></p>
+            <p style="text-align:center;color:#6B7280;font-size:14px;margin-top:24px;padding:16px;background:#FAF6EE;border-radius:10px;">A licensed agent will reach out within 1 business day to finalize your coverage.</p>
         </div>
     </section>
 
@@ -306,5 +387,25 @@
     </footer>
 
     <script src="/js/quote.js"></script>
+    <script>
+        const slider = document.getElementById('coverageAmount');
+        const sliderRow = slider && slider.closest('.fex-slider-row');
+        if (slider && sliderRow) {
+            slider.addEventListener('input', () => {
+                sliderRow.classList.add('bump');
+                clearTimeout(slider._t);
+                slider._t = setTimeout(() => sliderRow.classList.remove('bump'), 150);
+            });
+        }
+        const psli = document.getElementById('premiumBudget');
+        const psliRow = psli && psli.closest('.fex-slider-row');
+        if (psli && psliRow) {
+            psli.addEventListener('input', () => {
+                psliRow.classList.add('bump');
+                clearTimeout(psli._t);
+                psli._t = setTimeout(() => psliRow.classList.remove('bump'), 150);
+            });
+        }
+    </script>
 </body>
 </html>
