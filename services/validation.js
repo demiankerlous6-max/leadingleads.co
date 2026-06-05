@@ -42,6 +42,53 @@ function isJunkName(s) {
     return false;
 }
 
+// Accepts: "5'7\"", "5'7", "5 ft 7 in", "5ft7", "67", "67 in", "170 cm", "1.7 m", "5.5"
+// Returns total inches as a Number, or NaN if it can't parse.
+function parseHeightToInches(input) {
+    if (input === null || input === undefined) return NaN;
+    if (typeof input === 'number') return input;
+    let s = String(input).trim().toLowerCase();
+    if (!s) return NaN;
+
+    // Normalize fancy quote characters
+    s = s.replace(/[′’']/g, "'").replace(/[″”“"]/g, '"');
+
+    // Pattern: 5'7" or 5'7 or 5'
+    let m = s.match(/^(\d+(?:\.\d+)?)\s*'\s*(\d+(?:\.\d+)?)?\s*"?$/);
+    if (m) {
+        const feet = parseFloat(m[1]);
+        const inches = m[2] ? parseFloat(m[2]) : 0;
+        return feet * 12 + inches;
+    }
+
+    // Pattern: 5 ft 7 in / 5ft7in / 5 feet 7 inches
+    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:ft|feet)\s*(\d+(?:\.\d+)?)?\s*(?:in|inches?)?$/);
+    if (m) {
+        const feet = parseFloat(m[1]);
+        const inches = m[2] ? parseFloat(m[2]) : 0;
+        return feet * 12 + inches;
+    }
+
+    // Pattern: 170 cm
+    m = s.match(/^(\d+(?:\.\d+)?)\s*cm$/);
+    if (m) return parseFloat(m[1]) / 2.54;
+
+    // Pattern: 1.7 m
+    m = s.match(/^(\d+(?:\.\d+)?)\s*m(?:eters?)?$/);
+    if (m) return parseFloat(m[1]) * 39.3701;
+
+    // Pattern: plain number with optional 'in' suffix
+    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:in|inches?|")?$/);
+    if (m) {
+        const v = parseFloat(m[1]);
+        // If value < 9, almost certainly meant feet ("5" or "6.5")
+        if (v < 9) return v * 12;
+        return v;  // already in inches
+    }
+
+    return NaN;
+}
+
 function isJunkPhone(digits) {
     if (/^(.)\1+$/.test(digits)) return true;
     if (/^0+$/.test(digits)) return true;
@@ -109,10 +156,10 @@ function validateQuoteInput(data) {
     }
 
     // --- Health: height/weight/BMI ---
-    const h = Number(data.height);
+    const h = parseHeightToInches(data.height);
     const w = Number(data.weight);
-    if (!h || isNaN(h)) push('height', 'Required');
-    else if (h < MIN_HEIGHT_INCHES || h > MAX_HEIGHT_INCHES) push('height', `Must be ${MIN_HEIGHT_INCHES}–${MAX_HEIGHT_INCHES} in`);
+    if (!h || isNaN(h)) push('height', 'Required (e.g. 5\'7 or 67 or 170 cm)');
+    else if (h < MIN_HEIGHT_INCHES || h > MAX_HEIGHT_INCHES) push('height', `Must be ${MIN_HEIGHT_INCHES}–${MAX_HEIGHT_INCHES} in (4'0\"–7'6\")`);
 
     if (!w || isNaN(w)) push('weight', 'Required');
     else if (w < MIN_WEIGHT_LBS || w > MAX_WEIGHT_LBS) push('weight', `Must be ${MIN_WEIGHT_LBS}–${MAX_WEIGHT_LBS} lbs`);
@@ -192,7 +239,7 @@ function sanitizeQuoteInput(data) {
         gender: String(data.gender).toLowerCase(),
         state: String(data.state).toUpperCase(),
         zipCode: data.zipCode || '',
-        height: Number(data.height),
+        height: Math.round(parseHeightToInches(data.height) * 10) / 10,
         weight: Number(data.weight),
         smokingStatus: String(data.smokingStatus).toLowerCase(),
         healthRating: String(data.healthRating).toLowerCase(),

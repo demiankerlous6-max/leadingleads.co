@@ -53,6 +53,35 @@ const earliestPossibleDob = new Date(today.getFullYear() - ABSOLUTE_MAX_AGE, tod
 dobInput.min = minDob.toISOString().split('T')[0];
 dobInput.max = maxDob.toISOString().split('T')[0];
 
+// Accepts 5'7, 5'7", 67, 67 in, 170 cm, 1.7 m, 5.5
+function parseHeightToInches(input) {
+    if (input === null || input === undefined) return NaN;
+    if (typeof input === 'number') return input;
+    let s = String(input).trim().toLowerCase();
+    if (!s) return NaN;
+    s = s.replace(/[′’']/g, "'").replace(/[″“”"]/g, '"');
+
+    let m = s.match(/^(\d+(?:\.\d+)?)\s*'\s*(\d+(?:\.\d+)?)?\s*"?$/);
+    if (m) return parseFloat(m[1]) * 12 + (m[2] ? parseFloat(m[2]) : 0);
+
+    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:ft|feet)\s*(\d+(?:\.\d+)?)?\s*(?:in|inches?)?$/);
+    if (m) return parseFloat(m[1]) * 12 + (m[2] ? parseFloat(m[2]) : 0);
+
+    m = s.match(/^(\d+(?:\.\d+)?)\s*cm$/);
+    if (m) return parseFloat(m[1]) / 2.54;
+
+    m = s.match(/^(\d+(?:\.\d+)?)\s*m(?:eters?)?$/);
+    if (m) return parseFloat(m[1]) * 39.3701;
+
+    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:in|inches?|")?$/);
+    if (m) {
+        const v = parseFloat(m[1]);
+        if (v < 9) return v * 12;
+        return v;
+    }
+    return NaN;
+}
+
 function calcAge(dobStr) {
     const d = new Date(dobStr);
     let age = today.getFullYear() - d.getFullYear();
@@ -169,9 +198,18 @@ function validateStep(n) {
         });
     }
 
-    // --- Step 2 specific: BMI sanity ---
+    // --- Step 2 specific: BMI sanity + height parse ---
     if (n === 2) {
-        const h = Number(document.getElementById('height').value);
+        const heightRaw = document.getElementById('height').value;
+        const h = parseHeightToInches(heightRaw);
+        if (!h || isNaN(h)) {
+            setFieldError('height', 'Use format like 5\'7, 67, or 170 cm');
+            valid = false;
+        } else if (h < MIN_HEIGHT || h > MAX_HEIGHT) {
+            setFieldError('height', 'Must be 4\'0" to 7\'6"');
+            valid = false;
+        }
+
         const w = Number(document.getElementById('weight').value);
         if (h >= MIN_HEIGHT && h <= MAX_HEIGHT && w >= MIN_WEIGHT && w <= MAX_WEIGHT) {
             const bmi = (w / (h * h)) * 703;
@@ -238,7 +276,7 @@ form.addEventListener('submit', async (e) => {
     });
     data.smsConsent = !!document.getElementById('smsConsent').checked;
     data.coverageAmount = Number(coverageInput.value);
-    data.height = Number(data.height);
+    data.height = parseHeightToInches(data.height);   // user can type "5'7", "67", "170 cm", etc.
     data.weight = Number(data.weight);
 
     try {
