@@ -96,6 +96,45 @@ coverageInput.addEventListener('input', e => {
     coverageDisplay.textContent = formatMoney(e.target.value);
 });
 
+// --- Per-policy coverage caps (mirror server-side limits) ---
+const POLICY_MAX_COVERAGE = {
+    'term-10':    5000000,
+    'term-20':    5000000,
+    'term-30':    5000000,
+    'whole':       100000,
+    'universal':  1000000,
+    'iul':        1000000
+};
+const POLICY_DISPLAY_NAMES = {
+    'term-10':   '10-Year Term',
+    'term-20':   '20-Year Term',
+    'term-30':   '30-Year Term',
+    'whole':     'Whole Life',
+    'universal': 'Universal Life',
+    'iul':       'Indexed Universal Life'
+};
+
+// When policy type changes, clamp the slider max + value to that policy's cap
+const policyTypeSelect = document.getElementById('policyType');
+if (policyTypeSelect) {
+    policyTypeSelect.addEventListener('change', () => {
+        const max = POLICY_MAX_COVERAGE[policyTypeSelect.value] || 2000000;
+        const sliderMax = Math.min(max, 2000000);  // slider tops out at 2M visually
+        coverageInput.max = sliderMax;
+        if (Number(coverageInput.value) > sliderMax) {
+            coverageInput.value = sliderMax;
+            coverageDisplay.textContent = formatMoney(sliderMax);
+        }
+        // Update the slider's max-label
+        const maxLabel = document.querySelector('.range-labels span:last-child');
+        if (maxLabel) {
+            maxLabel.textContent = sliderMax >= 1000000
+                ? '$' + (sliderMax / 1000000) + 'M'
+                : '$' + (sliderMax / 1000) + 'K';
+        }
+    });
+}
+
 // ===== Inline error helpers =====
 function clearFieldError(fieldId) {
     const el = document.getElementById(fieldId);
@@ -161,8 +200,18 @@ function validateStep(n) {
         if (el.type === 'number') {
             const v = Number(el.value);
             const min = Number(el.min), max = Number(el.max);
-            if (Number.isFinite(min) && v < min) { setFieldError(el.id, `Min ${min}`); valid = false; }
-            else if (Number.isFinite(max) && v > max) { setFieldError(el.id, `Max ${max}`); valid = false; }
+            // Friendly per-field error messages
+            const label = el.id === 'weight' ? 'Weight'
+                        : el.id === 'height' ? 'Height'
+                        : el.id === 'age'    ? 'Age'
+                        : 'Value';
+            if (Number.isFinite(min) && v < min) {
+                setFieldError(el.id, `${label} must be at least ${min}`);
+                valid = false;
+            } else if (Number.isFinite(max) && v > max) {
+                setFieldError(el.id, `${label} cannot exceed ${max}`);
+                valid = false;
+            }
         }
     });
 
@@ -376,8 +425,6 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
-
-        // SUCCESS: swap panels — hide verify, show quote
         if (json.quote) renderResult(json.quote);
         otpSection.hidden = true;
         quoteSection.hidden = false;

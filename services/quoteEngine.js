@@ -19,7 +19,8 @@ const POLICY_TYPE_MULTIPLIER = {
     'term-20': 1.00,
     'term-30': 1.48,
     'whole': 1.00,
-    'universal': 0.55
+    'universal': 0.55,
+    'iul': 0.95    // IUL = Indexed Universal Life — premium product, slightly less than whole
 };
 
 const TERM_COVERAGE_ANCHORS = [
@@ -48,7 +49,8 @@ function interpolateAnchors(anchors, value) {
 }
 
 function coverageMultiplier(coverage, policyType) {
-    const anchors = (policyType === 'whole' || policyType === 'universal') ? WHOLE_COVERAGE_ANCHORS : TERM_COVERAGE_ANCHORS;
+    const isPermanent = policyType === 'whole' || policyType === 'universal' || policyType === 'iul';
+    const anchors = isPermanent ? WHOLE_COVERAGE_ANCHORS : TERM_COVERAGE_ANCHORS;
     return interpolateAnchors(anchors, coverage);
 }
 
@@ -133,7 +135,7 @@ function interpolateBaseRate(genderTable, age) {
 function round(n) { return Math.round(n * 100) / 100; }
 
 function calculateQuote(input) {
-    const isPermanent = input.policyType === 'whole' || input.policyType === 'universal';
+    const isPermanent = input.policyType === 'whole' || input.policyType === 'universal' || input.policyType === 'iul';
     const baseTable = isPermanent ? WHOLE_BASE : TERM_BASE;
     const genderTable = baseTable[input.gender] || baseTable.other;
     const baseMonthly = interpolateBaseRate(genderTable, input.age);

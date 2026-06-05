@@ -16,7 +16,8 @@ const POLICY_LABELS = {
     'term-20':   '20-Year Term',
     'term-30':   '30-Year Term',
     'whole':     'Whole Life',
-    'universal': 'Universal Life'
+    'universal': 'Universal Life',
+    'iul':       'Indexed Universal Life'
 };
 
 async function initializeSchema() {

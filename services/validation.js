@@ -11,7 +11,26 @@ const US_STATES = [
 const VALID_GENDERS = ['male', 'female', 'other'];
 const VALID_SMOKING = ['never', 'former', 'current'];
 const VALID_HEALTH = ['excellent', 'good', 'average', 'poor'];
-const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal'];
+const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal', 'iul'];
+
+// Per-policy maximum coverage amounts
+const POLICY_MAX_COVERAGE = {
+    'term-10':    5000000,
+    'term-20':    5000000,
+    'term-30':    5000000,
+    'whole':       100000,   // Whole life capped at $100k
+    'universal':  1000000,
+    'iul':        1000000    // Indexed Universal Life capped at $1M
+};
+
+const POLICY_DISPLAY_NAMES = {
+    'term-10':   '10-Year Term',
+    'term-20':   '20-Year Term',
+    'term-30':   '30-Year Term',
+    'whole':     'Whole Life',
+    'universal': 'Universal Life',
+    'iul':       'Indexed Universal Life'
+};
 
 // Human sanity limits
 const ABSOLUTE_MAX_AGE = 120;
@@ -168,7 +187,7 @@ function validateQuoteInput(data) {
         w >= MIN_WEIGHT_LBS && w <= MAX_WEIGHT_LBS) {
         const bmi = (w / (h * h)) * 703;
         if (bmi < MIN_BMI || bmi > MAX_BMI) {
-            push('weight', 'Not realistic for height');
+            push('weight', 'Weight does not match height (impossible BMI)');
         }
     }
 
@@ -186,15 +205,25 @@ function validateQuoteInput(data) {
         }
     });
 
-    // --- Policy ---
-    if (!data.policyType || !VALID_POLICY_TYPES.includes(String(data.policyType).toLowerCase())) {
-        push('policyType', 'Required');
+    // --- Policy + coverage with per-policy caps ---
+    const policyType = data.policyType ? String(data.policyType).toLowerCase() : '';
+    if (!policyType || !VALID_POLICY_TYPES.includes(policyType)) {
+        push('policyType', 'Select a policy type');
     }
     const coverage = Number(data.coverageAmount);
-    if (!coverage || isNaN(coverage) || coverage < 25000 || coverage > 5000000) {
-        push('coverageAmount', 'Must be $25k–$5M');
+    if (!coverage || isNaN(coverage) || coverage < 25000) {
+        push('coverageAmount', 'Coverage must be at least $25,000');
     } else if (coverage % 1000 !== 0) {
-        push('coverageAmount', 'Must be in $1k increments');
+        push('coverageAmount', 'Coverage must be in $1,000 increments');
+    } else if (policyType && POLICY_MAX_COVERAGE[policyType]) {
+        const maxAllowed = POLICY_MAX_COVERAGE[policyType];
+        if (coverage > maxAllowed) {
+            const policyName = POLICY_DISPLAY_NAMES[policyType] || policyType;
+            const maxLabel = maxAllowed >= 1000000
+                ? '$' + (maxAllowed / 1000000) + 'M'
+                : '$' + (maxAllowed / 1000) + 'k';
+            push('coverageAmount', `${policyName} is capped at ${maxLabel}`);
+        }
     }
 
     // --- Contact: phone REQUIRED, email OPTIONAL ---
@@ -260,7 +289,10 @@ module.exports = {
     validateQuoteInput,
     sanitizeQuoteInput,
     calculateAge,
+    parseHeightToInches,
     US_STATES,
+    POLICY_MAX_COVERAGE,
+    POLICY_DISPLAY_NAMES,
     LIMITS: {
         ABSOLUTE_MAX_AGE, ELIGIBLE_MIN_AGE, ELIGIBLE_MAX_AGE,
         MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES,

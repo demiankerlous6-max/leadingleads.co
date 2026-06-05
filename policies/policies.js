@@ -72,6 +72,22 @@ const POLICIES = [
             'Interest-sensitive returns'
         ],
         startingFrom: 95
+    },
+    {
+        id: 'iul',
+        name: 'Indexed Universal Life (IUL)',
+        category: 'Permanent Life',
+        shortDescription: 'Permanent coverage with cash value tied to a stock-market index.',
+        longDescription: 'IUL combines lifetime protection with cash value growth linked to a market index (like the S&P 500). Caps and floors mean you participate in gains without market-loss risk. Coverage up to $1M; ideal for tax-advantaged wealth building.',
+        idealFor: ['Long-term wealth builders', 'Tax-advantaged growth seekers', 'Higher-income earners'],
+        features: [
+            'Permanent (lifetime) coverage',
+            'Cash value indexed to market — gains capped, losses floored at 0%',
+            'Tax-deferred accumulation',
+            'Flexible premium structure',
+            'Coverage cap: $1,000,000'
+        ],
+        startingFrom: 130
     }
 ];
 
