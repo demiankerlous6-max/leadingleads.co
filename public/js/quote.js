@@ -212,10 +212,21 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
-        if (json.quote) {
-            document.getElementById('result-monthly').textContent = '$' + Number(json.quote.monthlyPremium).toFixed(2);
-            document.getElementById('result-annual').textContent = '≈ $' + Number(json.quote.annualPremium).toFixed(2) + ' per year';
-            document.getElementById('result-class').textContent = json.quote.healthClass || 'Level';
+                if (json.quote) {
+            const q = json.quote;
+            const monthlyEl = document.getElementById('result-monthly');
+            const annualEl = document.getElementById('result-annual');
+            if (q.lumpSum) {
+                monthlyEl.innerHTML = '$' + Number(q.lumpSum).toLocaleString() + '<span class="per-mo"> one-time</span>';
+                annualEl.textContent = 'Single Premium Whole Life: paid in full, no future premiums';
+            } else if (q.healthClass && q.healthClass.indexOf('Limited Pay') >= 0) {
+                monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
+                annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year, paid up after 10 years';
+            } else {
+                monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
+                annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year';
+            }
+            document.getElementById('result-class').textContent = q.healthClass || 'Level';
         }
         otpSection.hidden = true;
         quoteSection.hidden = false;

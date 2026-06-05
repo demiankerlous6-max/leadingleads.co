@@ -12,7 +12,7 @@ const VALID_GENDERS = ['male', 'female', 'other'];
 const VALID_SMOKING = ['never', 'former', 'current'];
 const VALID_HEALTH = ['excellent', 'good', 'average', 'poor'];
 const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal', 'iul', 'final-expense'];
-const VALID_COVERAGE_TYPES = ['level', 'graded', 'modified'];
+const VALID_COVERAGE_TYPES = ['level', 'graded-modified', 'guaranteed', 'limited-pay', 'spwl'];
 const VALID_NICOTINE = ['none', 'cigarettes', 'cigars', 'vape', 'chewing'];
 
 // Per-policy maximum coverage amounts
@@ -337,26 +337,22 @@ function sanitizeFEQuoteInput(data) {
         coverageAmount: Number(data.coverageAmount) || 10000,
         email: data.email ? String(data.email).trim().toLowerCase() : '',
         phone: data.phone ? String(data.phone).trim() : '',
-        height: 70, weight: 170, smokingStatus: data.nicotineUse === 'none' ? 'never' : 'current',
+        height: 70, weight: 170,
+        smokingStatus: data.nicotineUse === 'none' ? 'never' : 'current',
         healthRating: 'good',
-        hasDiabetes: false, hasHeartDisease: false, hasCancerHistory: false, familyHistoryHeartDisease: false,
+        hasDiabetes: false, hasHeartDisease: false,
+        hasCancerHistory: false, familyHistoryHeartDisease: false,
         smsConsent: true,
         smsConsentTimestamp: new Date().toISOString()
     };
 }
 
 module.exports = {
-    validateQuoteInput,
-    sanitizeQuoteInput,
-    validateFEQuoteInput,
-    sanitizeFEQuoteInput,
-    calculateAge,
-    parseHeightToInches,
-    US_STATES,
-    POLICY_MAX_COVERAGE,
-    POLICY_DISPLAY_NAMES,
-    VALID_COVERAGE_TYPES,
-    VALID_NICOTINE,
+    validateQuoteInput, sanitizeQuoteInput,
+    validateFEQuoteInput, sanitizeFEQuoteInput,
+    calculateAge, parseHeightToInches,
+    US_STATES, POLICY_MAX_COVERAGE, POLICY_DISPLAY_NAMES,
+    VALID_COVERAGE_TYPES, VALID_NICOTINE,
     LIMITS: {
         ABSOLUTE_MAX_AGE, ELIGIBLE_MIN_AGE, ELIGIBLE_MAX_AGE,
         MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES,

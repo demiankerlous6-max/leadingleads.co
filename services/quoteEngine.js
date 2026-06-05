@@ -23,15 +23,26 @@ const FINAL_EXPENSE_BASE_PER_10K = {
     }
 };
 
-// Coverage type — Final Expense specific
-// Level: best rates, full death benefit from day 1 (best health)
-// Graded: lower benefit in years 1-2 (returns premiums + interest), full after year 3
-// Modified: only return-of-premium for years 1-2, then full benefit (poorest health)
+// Coverage type — Final Expense specific (rates relative to Level)
+// Level:           best rates, full death benefit from day 1 (best health)
+// Graded/Modified: reduced benefit years 1-2, full after (mid/poor health)
+// Guaranteed:      no health questions, 2-3yr waiting period, highest rates
+// Limited Pay:     pay for fixed window (e.g., 10yr) then policy is paid-up
+// SPWL:            Single Premium Whole Life — one lump sum, immediate paid-up
 const FE_COVERAGE_TYPE_MULTIPLIER = {
-    'level':    1.00,
-    'graded':   1.20,
-    'modified': 1.45
+    'level':            1.00,
+    'graded-modified':  1.30,   // blended graded + modified midpoint
+    'graded':           1.20,   // (legacy single-type)
+    'modified':         1.45,   // (legacy single-type)
+    'guaranteed':       1.85,   // guaranteed issue — no health questions
+    'limited-pay':      2.05,   // 10-year pay — higher monthly, finite term
+    'spwl':             1.00    // SPWL pricing is lump-sum, computed separately
 };
+
+// SPWL = Single Premium Whole Life. Customer pays a one-time lump sum
+// for immediate paid-up coverage. Industry rule of thumb:
+// SPWL lump sum ≈ 13 × annualized level premium (varies by age/sex).
+const SPWL_LUMP_MULTIPLIER = 13;
 
 // Nicotine multiplier
 const NICOTINE_MULTIPLIER = {
@@ -182,17 +193,39 @@ function calculateFinalExpenseQuote(input) {
     let monthly = baseMonthlyPer10K * coverageUnits * coverageTypeMult * nicotineMult * stateMult;
     monthly *= 1.03;
 
+    // SPWL is paid as a single lump sum, not monthly
+    let lumpSum = null;
+    if (coverageType === 'spwl') {
+        // SPWL = lump-sum equivalent of ~13 years of annualized level premium
+        const annualLevel = monthly * 12;
+        lumpSum = round(annualLevel * SPWL_LUMP_MULTIPLIER);
+    }
+
+    // Friendly display name for the coverage type
+    const FRIENDLY_NAMES = {
+        'level':           'Level',
+        'graded-modified': 'Graded/Modified',
+        'graded':          'Graded',
+        'modified':        'Modified',
+        'guaranteed':      'Guaranteed Issue',
+        'limited-pay':     'Limited Pay (10-yr)',
+        'spwl':            'Single Premium (SPWL)'
+    };
+
     return {
         monthlyPremium: round(monthly),
         annualPremium: round(monthly * 12),
-        healthClass: coverageType.charAt(0).toUpperCase() + coverageType.slice(1),
+        lumpSum,
+        healthClass: FRIENDLY_NAMES[coverageType] || coverageType,
         bmi: 0,
         breakdown: {
             baseMonthlyPer10K: round(baseMonthlyPer10K),
             coverageUnits10K: coverageUnits,
+            coverageType,
             coverageTypeMultiplier: coverageTypeMult,
             nicotineMultiplier: nicotineMult,
-            stateMultiplier: stateMult
+            stateMultiplier: stateMult,
+            isLumpSum: !!lumpSum
         }
     };
 }
@@ -211,14 +244,11 @@ function calculateMaxCoverageFromPremium(input, targetMonthly) {
 }
 
 function calculateQuote(input) {
-    if (input.policyType === 'final-expense') {
-        return calculateFinalExpenseQuote(input);
-    }
+    if (input.policyType === 'final-expense') return calculateFinalExpenseQuote(input);
     const isPermanent = input.policyType === 'whole' || input.policyType === 'universal' || input.policyType === 'iul';
     const baseTable = isPermanent ? WHOLE_BASE : TERM_BASE;
     const genderTable = baseTable[input.gender] || baseTable.other;
     const baseMonthly = interpolateBaseRate(genderTable, input.age);
-
     const policyMult = POLICY_TYPE_MULTIPLIER[input.policyType] || 1.0;
     const coverageMult = coverageMultiplier(input.coverageAmount, input.policyType);
     const smokingMult = smokingMultiplier(input.smokingStatus, input.age);
@@ -228,26 +258,14 @@ function calculateQuote(input) {
     const bmiMult = bmiMultiplier(userBmi);
     const conditionsMult = conditionsMultiplier(input);
     const stateMult = STATE_MULTIPLIER[input.state] || 1.0;
-
     let monthly = baseMonthly * policyMult * coverageMult * smokingMult * healthClassMult * bmiMult * conditionsMult * stateMult;
     monthly *= 1.05;
-
     return {
         monthlyPremium: round(monthly),
         annualPremium: round(monthly * 12),
         healthClass,
-        bmi: Math.round(userBmi * 10) / 10,
-        breakdown: {
-            baseMonthly: round(baseMonthly),
-            policyMultiplier: policyMult,
-            coverageMultiplier: round(coverageMult),
-            smokingMultiplier: smokingMult,
-            healthClassMultiplier: healthClassMult,
-            bmiMultiplier: bmiMult,
-            conditionsMultiplier: round(conditionsMult),
-            stateMultiplier: stateMult
-        }
+        bmi: Math.round(userBmi * 10) / 10
     };
 }
 
-module.exports = { calculateQuote, calculateFinalExpenseQuote, calculateMaxCoverageFromPremium };
+module.exports = { calculateQuote, calculateFinalExpenseQuote };

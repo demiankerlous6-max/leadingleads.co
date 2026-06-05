@@ -266,9 +266,11 @@
             <div class="fex-row">
                 <label for="coverageType">Coverage Type</label>
                 <select id="coverageType" name="coverageType">
-                    <option value="level">Level — best rates</option>
-                    <option value="graded">Graded — mild concerns</option>
-                    <option value="modified">Modified — chronic conditions</option>
+                    <option value="level">Level — best rates, day 1 coverage</option>
+                    <option value="graded-modified">Graded / Modified — health flags</option>
+                    <option value="guaranteed">Guaranteed Issue — no health questions</option>
+                    <option value="limited-pay">Limited Pay — 10 years then paid up</option>
+                    <option value="spwl">SPWL — single premium, paid up day 1</option>
                 </select>
             </div>
 
@@ -400,12 +402,4 @@
         const psli = document.getElementById('premiumBudget');
         const psliRow = psli && psli.closest('.fex-slider-row');
         if (psli && psliRow) {
-            psli.addEventListener('input', () => {
-                psliRow.classList.add('bump');
-                clearTimeout(psli._t);
-                psli._t = setTimeout(() => psliRow.classList.remove('bump'), 150);
-            });
-        }
-    </script>
-</body>
-</html>
+            psli.addEventListener('input', () 
