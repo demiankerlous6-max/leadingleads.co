@@ -12,7 +12,7 @@ const POLICIES = [
             'Day-one full death benefit',
             'No medical exam',
             'Locked-in monthly premium',
-            'Coverage from $1,000 to $50,000',
+            'Coverage from $1,000 to $100,000',
             'Best rates of the three FE types'
         ],
         startingFrom: 20
@@ -28,7 +28,7 @@ const POLICIES = [
             'Years 1–2: premiums returned + interest',
             'Year 3+: full death benefit',
             'No medical exam',
-            'Coverage from $1,000 to $50,000',
+            'Coverage from $1,000 to $100,000',
             'Mid-tier monthly rate'
         ],
         startingFrom: 30
@@ -45,7 +45,7 @@ const POLICIES = [
             'Year 3+: full death benefit',
             'No medical exam',
             'Most accessible qualification',
-            'Coverage from $1,000 to $50,000'
+            'Coverage from $1,000 to $100,000'
         ],
         startingFrom: 45
     }

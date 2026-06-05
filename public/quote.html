@@ -239,7 +239,7 @@
 
     <section class="ll-hero">
         <h1>Your final expense quote, <span class="accent">in minutes</span>.</h1>
-        <p>Real 2026 carrier pricing. No medical exam. Ages 50–85, coverage from $1K to $50K.</p>
+        <p>Real 2026 carrier pricing. No medical exam. Ages 50–85, coverage from $1K to $100K.</p>
         <div class="ll-badges">
             <span class="ll-badge"><span class="check">✓</span> No medical exam</span>
             <span class="ll-badge"><span class="check">✓</span> All 50 states</span>
@@ -277,10 +277,10 @@
             <div class="fex-slider-row" id="face-section">
                 <div class="fex-slider-label">Coverage Amount</div>
                 <div class="fex-slider-value" id="coverage-display">$10,000</div>
-                <input type="range" id="coverageAmount" name="coverageAmount" min="1000" max="50000" step="500" value="10000">
+                <input type="range" id="coverageAmount" name="coverageAmount" min="1000" max="100000" step="500" value="10000">
                 <div class="fex-range-labels">
                     <span>$1K</span>
-                    <span>$50K</span>
+                    <span>$100K</span>
                 </div>
             </div>
 
@@ -402,4 +402,12 @@
         const psli = document.getElementById('premiumBudget');
         const psliRow = psli && psli.closest('.fex-slider-row');
         if (psli && psliRow) {
-            psli.addEventListener('input', () 
+            psli.addEventListener('input', () => {
+                psliRow.classList.add('bump');
+                clearTimeout(psli._t);
+                psli._t = setTimeout(() => psliRow.classList.remove('bump'), 150);
+            });
+        }
+    </script>
+</body>
+</html>

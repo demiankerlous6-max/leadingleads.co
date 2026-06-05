@@ -23,7 +23,7 @@ const POLICY_MAX_COVERAGE = {
     'whole':       100000,   // Whole life capped at $100k
     'universal':  1000000,
     'iul':        1000000,   // Indexed Universal Life capped at $1M
-    'final-expense': 50000   // Final Expense capped at $50k
+    'final-expense': 100000  // Final Expense capped at $100k
 };
 
 const POLICY_DISPLAY_NAMES = {
@@ -309,7 +309,7 @@ function validateFEQuoteInput(data) {
     if (!VALID_NICOTINE.includes(nicotine)) push('nicotineUse', 'Select an option');
     const coverage = Number(data.coverageAmount);
     if (!coverage || isNaN(coverage) || coverage < 1000) push('coverageAmount', 'Coverage must be at least $1,000');
-    else if (coverage > 50000) push('coverageAmount', 'Final Expense capped at $50,000');
+    else if (coverage > 100000) push('coverageAmount', 'Final Expense capped at $100,000');
     if (!data.phone) push('phone', 'Required');
     else {
         const digits = String(data.phone).replace(/\D/g, '');
