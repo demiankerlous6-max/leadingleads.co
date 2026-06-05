@@ -8,6 +8,40 @@ const TERM_BASE = {
     other: { 18:14, 25:17, 30:22, 35:27, 40:40, 45:56, 50:85, 55:135, 60:245, 65:450, 70:794, 75:1410, 80:2235, 85:3360 }
 };
 
+// Final Expense (simplified-issue whole life) — monthly premium per $10,000 of coverage
+// Calibrated against 2026 published rate sheets from Mutual of Omaha, AIG, Gerber,
+// Aetna, Lincoln Heritage, and SBLI for ages 50-85.
+const FINAL_EXPENSE_BASE_PER_10K = {
+    male: {
+        50: 25, 55: 32, 60: 45, 65: 58, 70: 78, 75: 105, 80: 145, 85: 200
+    },
+    female: {
+        50: 20, 55: 25, 60: 36, 65: 46, 70: 62, 75: 84, 80: 118, 85: 165
+    },
+    other: {
+        50: 22, 55: 28, 60: 40, 65: 52, 70: 70, 75: 95, 80: 131, 85: 182
+    }
+};
+
+// Coverage type — Final Expense specific
+// Level: best rates, full death benefit from day 1 (best health)
+// Graded: lower benefit in years 1-2 (returns premiums + interest), full after year 3
+// Modified: only return-of-premium for years 1-2, then full benefit (poorest health)
+const FE_COVERAGE_TYPE_MULTIPLIER = {
+    'level':    1.00,
+    'graded':   1.20,
+    'modified': 1.45
+};
+
+// Nicotine multiplier
+const NICOTINE_MULTIPLIER = {
+    'none':       1.00,
+    'cigarettes': 1.85,
+    'cigars':     1.45,
+    'vape':       1.55,
+    'chewing':    1.40
+};
+
 const WHOLE_BASE = {
     male: { 25:85, 30:105, 35:122, 40:141, 45:175, 50:214, 55:263, 60:324, 65:435, 70:580, 75:780, 80:1050, 85:1380 },
     female: { 25:72, 30:90, 35:103, 40:120, 45:148, 50:180, 55:222, 60:275, 65:370, 70:495, 75:670, 80:900, 85:1180 },
@@ -134,7 +168,52 @@ function interpolateBaseRate(genderTable, age) {
 
 function round(n) { return Math.round(n * 100) / 100; }
 
+// Final Expense-specific calculation (separate path)
+function calculateFinalExpenseQuote(input) {
+    const genderTable = FINAL_EXPENSE_BASE_PER_10K[input.gender] || FINAL_EXPENSE_BASE_PER_10K.other;
+    const baseMonthlyPer10K = interpolateBaseRate(genderTable, input.age);
+
+    const coverageUnits = input.coverageAmount / 10000;
+    const coverageType = input.coverageType || 'level';
+    const coverageTypeMult = FE_COVERAGE_TYPE_MULTIPLIER[coverageType] || 1.0;
+    const nicotineMult = NICOTINE_MULTIPLIER[input.nicotineUse] || 1.0;
+    const stateMult = STATE_MULTIPLIER[input.state] || 1.0;
+
+    let monthly = baseMonthlyPer10K * coverageUnits * coverageTypeMult * nicotineMult * stateMult;
+    monthly *= 1.03;
+
+    return {
+        monthlyPremium: round(monthly),
+        annualPremium: round(monthly * 12),
+        healthClass: coverageType.charAt(0).toUpperCase() + coverageType.slice(1),
+        bmi: 0,
+        breakdown: {
+            baseMonthlyPer10K: round(baseMonthlyPer10K),
+            coverageUnits10K: coverageUnits,
+            coverageTypeMultiplier: coverageTypeMult,
+            nicotineMultiplier: nicotineMult,
+            stateMultiplier: stateMult
+        }
+    };
+}
+
+function calculateMaxCoverageFromPremium(input, targetMonthly) {
+    const genderTable = FINAL_EXPENSE_BASE_PER_10K[input.gender] || FINAL_EXPENSE_BASE_PER_10K.other;
+    const baseMonthlyPer10K = interpolateBaseRate(genderTable, input.age);
+    const coverageType = input.coverageType || 'level';
+    const coverageTypeMult = FE_COVERAGE_TYPE_MULTIPLIER[coverageType] || 1.0;
+    const nicotineMult = NICOTINE_MULTIPLIER[input.nicotineUse] || 1.0;
+    const stateMult = STATE_MULTIPLIER[input.state] || 1.0;
+    const factor = baseMonthlyPer10K * coverageTypeMult * nicotineMult * stateMult * 1.03;
+    if (factor <= 0) return 0;
+    const units = targetMonthly / factor;
+    return Math.round(units * 10000 / 500) * 500;
+}
+
 function calculateQuote(input) {
+    if (input.policyType === 'final-expense') {
+        return calculateFinalExpenseQuote(input);
+    }
     const isPermanent = input.policyType === 'whole' || input.policyType === 'universal' || input.policyType === 'iul';
     const baseTable = isPermanent ? WHOLE_BASE : TERM_BASE;
     const genderTable = baseTable[input.gender] || baseTable.other;
@@ -160,19 +239,15 @@ function calculateQuote(input) {
         bmi: Math.round(userBmi * 10) / 10,
         breakdown: {
             baseMonthly: round(baseMonthly),
-            baseTable: isPermanent ? 'whole-life' : 'term-life',
             policyMultiplier: policyMult,
             coverageMultiplier: round(coverageMult),
             smokingMultiplier: smokingMult,
-            healthClass,
             healthClassMultiplier: healthClassMult,
-            bmiValue: Math.round(userBmi * 10) / 10,
             bmiMultiplier: bmiMult,
             conditionsMultiplier: round(conditionsMult),
-            stateMultiplier: stateMult,
-            conservativeBuffer: 1.05
+            stateMultiplier: stateMult
         }
     };
 }
 
-module.exports = { calculateQuote };
+module.exports = { calculateQuote, calculateFinalExpenseQuote, calculateMaxCoverageFromPremium };

@@ -1,5 +1,4 @@
-// Quote page: multi-step form, inline validation, submission, OTP flow.
-// Phone is required, email is optional. Errors render inline next to each field.
+// Final Expense Quoter — single-page form, OTP flow, Vonage verification.
 
 const US_STATES = [
     ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
@@ -15,22 +14,12 @@ const US_STATES = [
     ['DC','Washington DC']
 ];
 
-// --- Sanity limits (mirror services/validation.js) ---
-const ABSOLUTE_MAX_AGE = 120;
-const ELIGIBLE_MIN_AGE = 18;
-const ELIGIBLE_MAX_AGE = 85;
-const MIN_HEIGHT = 48, MAX_HEIGHT = 90;
-const MIN_WEIGHT = 75, MAX_WEIGHT = 700;
-const MIN_BMI = 12, MAX_BMI = 80;
-
-// --- DOM refs ---
-const form = document.getElementById('quote-form');
 const stateSelect = document.getElementById('state');
-const progressFill = document.getElementById('progress-fill');
-const dobInput = document.getElementById('dateOfBirth');
-const coverageInput = document.getElementById('coverageAmount');
-const coverageDisplay = document.getElementById('coverageDisplay');
+stateSelect.innerHTML = '<option value="">Select...</option>' +
+    US_STATES.map(([code, name]) => `<option value="${code}">${name}</option>`).join('');
 
+const form = document.getElementById('quote-form');
+const quoteCard = document.getElementById('quote-card');
 const resultCard = document.getElementById('result-card');
 const otpSection = document.getElementById('otp-section');
 const quoteSection = document.getElementById('quote-section');
@@ -39,336 +28,162 @@ const otpContact = document.getElementById('otp-contact');
 
 let currentLeadId = null;
 let currentContact = null;
-let currentMethod = 'sms';
+let currentMode = 'face';   // 'face' or 'premium'
 
-// --- Populate state dropdown ---
-stateSelect.innerHTML = '<option value="">Select state...</option>' +
-    US_STATES.map(([code, name]) => `<option value="${code}">${name}</option>`).join('');
-
-// --- DOB constraints ---
-const today = new Date();
-const minDob = new Date(today.getFullYear() - ELIGIBLE_MAX_AGE, today.getMonth(), today.getDate());
-const maxDob = new Date(today.getFullYear() - ELIGIBLE_MIN_AGE, today.getMonth(), today.getDate());
-const earliestPossibleDob = new Date(today.getFullYear() - ABSOLUTE_MAX_AGE, today.getMonth(), today.getDate());
-dobInput.min = minDob.toISOString().split('T')[0];
-dobInput.max = maxDob.toISOString().split('T')[0];
-
-// Accepts 5'7, 5'7", 67, 67 in, 170 cm, 1.7 m, 5.5
-function parseHeightToInches(input) {
-    if (input === null || input === undefined) return NaN;
-    if (typeof input === 'number') return input;
-    let s = String(input).trim().toLowerCase();
-    if (!s) return NaN;
-    s = s.replace(/[′’']/g, "'").replace(/[″“”"]/g, '"');
-
-    let m = s.match(/^(\d+(?:\.\d+)?)\s*'\s*(\d+(?:\.\d+)?)?\s*"?$/);
-    if (m) return parseFloat(m[1]) * 12 + (m[2] ? parseFloat(m[2]) : 0);
-
-    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:ft|feet)\s*(\d+(?:\.\d+)?)?\s*(?:in|inches?)?$/);
-    if (m) return parseFloat(m[1]) * 12 + (m[2] ? parseFloat(m[2]) : 0);
-
-    m = s.match(/^(\d+(?:\.\d+)?)\s*cm$/);
-    if (m) return parseFloat(m[1]) / 2.54;
-
-    m = s.match(/^(\d+(?:\.\d+)?)\s*m(?:eters?)?$/);
-    if (m) return parseFloat(m[1]) * 39.3701;
-
-    m = s.match(/^(\d+(?:\.\d+)?)\s*(?:in|inches?|")?$/);
-    if (m) {
-        const v = parseFloat(m[1]);
-        if (v < 9) return v * 12;
-        return v;
-    }
-    return NaN;
-}
-
-function calcAge(dobStr) {
-    const d = new Date(dobStr);
-    let age = today.getFullYear() - d.getFullYear();
-    const m = today.getMonth() - d.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
-    return age;
-}
-
-// --- Coverage slider live display ---
-function formatMoney(n) { return '$' + Number(n).toLocaleString(); }
-coverageInput.addEventListener('input', e => {
-    coverageDisplay.textContent = formatMoney(e.target.value);
+// --- Toggle pill behavior ---
+document.querySelectorAll('.fex-pill[data-mode]').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.fex-pill[data-mode]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentMode = pill.dataset.mode;
+        document.getElementById('face-section').hidden = currentMode !== 'face';
+        document.getElementById('premium-section').hidden = currentMode !== 'premium';
+    });
 });
 
-// --- Per-policy coverage caps (mirror server-side limits) ---
-const POLICY_MAX_COVERAGE = {
-    'term-10':    5000000,
-    'term-20':    5000000,
-    'term-30':    5000000,
-    'whole':       100000,
-    'universal':  1000000,
-    'iul':        1000000
-};
-const POLICY_DISPLAY_NAMES = {
-    'term-10':   '10-Year Term',
-    'term-20':   '20-Year Term',
-    'term-30':   '30-Year Term',
-    'whole':     'Whole Life',
-    'universal': 'Universal Life',
-    'iul':       'Indexed Universal Life'
-};
-
-// When policy type changes, clamp the slider max + value to that policy's cap
-const policyTypeSelect = document.getElementById('policyType');
-if (policyTypeSelect) {
-    policyTypeSelect.addEventListener('change', () => {
-        const max = POLICY_MAX_COVERAGE[policyTypeSelect.value] || 2000000;
-        const sliderMax = Math.min(max, 2000000);  // slider tops out at 2M visually
-        coverageInput.max = sliderMax;
-        if (Number(coverageInput.value) > sliderMax) {
-            coverageInput.value = sliderMax;
-            coverageDisplay.textContent = formatMoney(sliderMax);
-        }
-        // Update the slider's max-label
-        const maxLabel = document.querySelector('.range-labels span:last-child');
-        if (maxLabel) {
-            maxLabel.textContent = sliderMax >= 1000000
-                ? '$' + (sliderMax / 1000000) + 'M'
-                : '$' + (sliderMax / 1000) + 'K';
-        }
+document.querySelectorAll('.fex-pill[data-sex]').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.fex-pill[data-sex]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        document.getElementById('gender').value = pill.dataset.sex;
     });
-}
+});
 
-// ===== Inline error helpers =====
+// --- Slider displays ---
+const coverageSlider = document.getElementById('coverageAmount');
+const coverageDisplay = document.getElementById('coverage-display');
+coverageSlider.addEventListener('input', e => {
+    coverageDisplay.textContent = '$' + Number(e.target.value).toLocaleString();
+});
+
+const premiumSlider = document.getElementById('premiumBudget');
+const premiumDisplay = document.getElementById('premium-display');
+premiumSlider.addEventListener('input', e => {
+    premiumDisplay.textContent = '$' + e.target.value + '/mo';
+});
+
+// --- Birthday <-> Age sync ---
+const dobMonth = document.getElementById('dob-month');
+const dobDay = document.getElementById('dob-day');
+const dobYear = document.getElementById('dob-year');
+const ageInput = document.getElementById('age');
+
+function syncAgeFromDob() {
+    if (dobMonth.value && dobDay.value && dobYear.value) {
+        const dob = new Date(Number(dobYear.value), Number(dobMonth.value) - 1, Number(dobDay.value));
+        if (!isNaN(dob.getTime())) {
+            const now = new Date();
+            let age = now.getFullYear() - dob.getFullYear();
+            const m = now.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+            if (age > 0 && age < 120) ageInput.value = age;
+        }
+    }
+}
+[dobMonth, dobDay, dobYear].forEach(el => el.addEventListener('input', syncAgeFromDob));
+
+ageInput.addEventListener('input', () => {
+    // Clear DOB fields when age is entered directly
+    const a = Number(ageInput.value);
+    if (a >= 50 && a <= 85 && !dobMonth.value && !dobDay.value && !dobYear.value) {
+        // Don't override DOB if user wants to fill it separately
+    }
+});
+
+// --- Inline error helpers ---
 function clearFieldError(fieldId) {
     const el = document.getElementById(fieldId);
     if (!el) return;
     el.classList.remove('input-error');
-    const group = el.closest('.form-group');
-    if (group) {
-        const existing = group.querySelector('.field-error');
-        if (existing) existing.remove();
+    const parent = el.closest('.fex-row, .fex-consent');
+    if (parent) {
+        const err = parent.querySelector('.fex-error');
+        if (err) err.remove();
     }
-}
-
-function clearAllFieldErrors() {
-    document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
-    document.querySelectorAll('.field-error').forEach(el => el.remove());
 }
 
 function setFieldError(fieldId, message) {
     const el = document.getElementById(fieldId);
     if (!el) return;
     el.classList.add('input-error');
-    const group = el.closest('.form-group');
-    if (!group) return;
-    let err = group.querySelector('.field-error');
+    const parent = el.closest('.fex-row, .fex-consent');
+    if (!parent) return;
+    let err = parent.querySelector('.fex-error');
     if (!err) {
         err = document.createElement('small');
-        err.className = 'field-error';
-        group.appendChild(err);
+        err.className = 'fex-error';
+        parent.appendChild(err);
     }
     err.textContent = message;
 }
 
-// Clear a field's error as soon as the user edits it
+function clearAllErrors() {
+    document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+    document.querySelectorAll('.fex-error').forEach(el => el.remove());
+}
+
 document.querySelectorAll('#quote-form input, #quote-form select').forEach(el => {
     el.addEventListener('input', () => clearFieldError(el.id));
     el.addEventListener('change', () => clearFieldError(el.id));
 });
 
-// ===== Step navigation =====
-function showStep(n) {
-    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-    const step = document.querySelector(`.step[data-step="${n}"]`);
-    if (step) {
-        step.classList.add('active');
-        progressFill.style.width = `${(n / 4) * 100}%`;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-}
-
-// ===== Per-step validation (mirrors server rules with brief messages) =====
-function validateStep(n) {
-    const step = document.querySelector(`.step[data-step="${n}"]`);
-    let valid = true;
-
-    // Generic required + range check for all inputs/selects in this step
-    step.querySelectorAll('input[required], select[required]').forEach(el => {
-        clearFieldError(el.id);
-        if (!el.value) {
-            setFieldError(el.id, 'Required');
-            valid = false;
-            return;
-        }
-        if (el.type === 'number') {
-            const v = Number(el.value);
-            const min = Number(el.min), max = Number(el.max);
-            // Friendly per-field error messages
-            const label = el.id === 'weight' ? 'Weight'
-                        : el.id === 'height' ? 'Height'
-                        : el.id === 'age'    ? 'Age'
-                        : 'Value';
-            if (Number.isFinite(min) && v < min) {
-                setFieldError(el.id, `${label} must be at least ${min}`);
-                valid = false;
-            } else if (Number.isFinite(max) && v > max) {
-                setFieldError(el.id, `${label} cannot exceed ${max}`);
-                valid = false;
-            }
-        }
-    });
-
-    // --- Step 1 specific: DOB sanity + name sanity ---
-    if (n === 1) {
-        const dobEl = document.getElementById('dateOfBirth');
-        if (dobEl.value) {
-            const dob = new Date(dobEl.value);
-            if (isNaN(dob.getTime())) {
-                setFieldError('dateOfBirth', 'Invalid date'); valid = false;
-            } else if (dob > today) {
-                setFieldError('dateOfBirth', 'Cannot be in the future'); valid = false;
-            } else {
-                const age = calcAge(dobEl.value);
-                if (dob < earliestPossibleDob || age > ABSOLUTE_MAX_AGE) {
-                    setFieldError('dateOfBirth', `Age can't exceed ${ABSOLUTE_MAX_AGE}`); valid = false;
-                } else if (age < ELIGIBLE_MIN_AGE) {
-                    setFieldError('dateOfBirth', `Must be ${ELIGIBLE_MIN_AGE}+`); valid = false;
-                } else if (age > ELIGIBLE_MAX_AGE) {
-                    setFieldError('dateOfBirth', `Must be ${ELIGIBLE_MAX_AGE} or younger`); valid = false;
-                }
-            }
-        }
-
-        ['firstName', 'lastName'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el.value) return;
-            const v = el.value.trim();
-            if (!/[A-Za-z]/.test(v) || /^(.)\1+$/.test(v.replace(/\s/g, ''))) {
-                setFieldError(id, 'Not a real name');
-                valid = false;
-            }
-        });
-    }
-
-    // --- Step 2 specific: BMI sanity + height parse ---
-    if (n === 2) {
-        const heightRaw = document.getElementById('height').value;
-        const h = parseHeightToInches(heightRaw);
-        if (!h || isNaN(h)) {
-            setFieldError('height', 'Use format like 5\'7, 67, or 170 cm');
-            valid = false;
-        } else if (h < MIN_HEIGHT || h > MAX_HEIGHT) {
-            setFieldError('height', 'Must be 4\'0" to 7\'6"');
-            valid = false;
-        }
-
-        const w = Number(document.getElementById('weight').value);
-        if (h >= MIN_HEIGHT && h <= MAX_HEIGHT && w >= MIN_WEIGHT && w <= MAX_WEIGHT) {
-            const bmi = (w / (h * h)) * 703;
-            if (bmi < MIN_BMI || bmi > MAX_BMI) {
-                setFieldError('weight', 'Not realistic for height');
-                valid = false;
-            }
-        }
-    }
-
-    // --- Step 4 specific: phone format + email format if provided + SMS consent ---
-    if (n === 4) {
-        const phone = document.getElementById('phone').value.trim();
-        if (phone) {
-            const digits = phone.replace(/\D/g, '');
-            if (!/^\+?1?[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(phone)) {
-                setFieldError('phone', 'Invalid US format'); valid = false;
-            } else if (digits.length < 10 || digits.length > 11) {
-                setFieldError('phone', 'Must have 10 digits'); valid = false;
-            } else if (/^(.)\1+$/.test(digits) || /^0+$/.test(digits) || /^[01]/.test(digits.slice(-10))) {
-                setFieldError('phone', 'Not a real number'); valid = false;
-            }
-        }
-
-        const email = document.getElementById('email').value.trim();
-        if (email) {
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-                setFieldError('email', 'Invalid email'); valid = false;
-            } else if (/^(test|admin|fake|asdf|noreply)@/i.test(email)) {
-                setFieldError('email', 'Use a real email'); valid = false;
-            }
-        }
-
-        // SMS consent must be checked (TCPA / Twilio requirement)
-        const consent = document.getElementById('smsConsent');
-        if (!consent.checked) {
-            setFieldError('smsConsent', 'You must agree to receive SMS to continue');
-            valid = false;
-        }
-    }
-
-    return valid;
-}
-
-document.querySelectorAll('[data-next]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const next = Number(btn.dataset.next);
-        if (validateStep(next - 1)) showStep(next);
-    });
-});
-document.querySelectorAll('[data-prev]').forEach(btn => {
-    btn.addEventListener('click', () => showStep(Number(btn.dataset.prev)));
-});
-
-// ===== Submit =====
-// Submit → server validates, calculates+saves quote, sends OTP. Quote is held until verified.
+// --- Submit ---
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!validateStep(4)) return;
+    clearAllErrors();
 
-    const data = Object.fromEntries(new FormData(form));
-    ['hasDiabetes','hasHeartDisease','hasCancerHistory','familyHistoryHeartDisease'].forEach(k => {
-        data[k] = !!document.getElementById(k).checked;
-    });
-    data.smsConsent = !!document.getElementById('smsConsent').checked;
-    data.coverageAmount = Number(coverageInput.value);
-    data.height = parseHeightToInches(data.height);   // user can type "5'7", "67", "170 cm", etc.
-    data.weight = Number(data.weight);
+    // Build payload
+    const dobStr = (dobYear.value && dobMonth.value && dobDay.value)
+        ? `${dobYear.value}-${String(dobMonth.value).padStart(2,'0')}-${String(dobDay.value).padStart(2,'0')}`
+        : '';
+
+    const payload = {
+        policyType: 'final-expense',
+        firstName: document.getElementById('firstName').value.trim(),
+        lastName: document.getElementById('lastName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        gender: document.getElementById('gender').value,
+        state: stateSelect.value,
+        dateOfBirth: dobStr,
+        age: ageInput.value ? Number(ageInput.value) : undefined,
+        nicotineUse: document.getElementById('nicotineUse').value,
+        coverageType: document.getElementById('coverageType').value,
+        coverageAmount: currentMode === 'face'
+            ? Number(coverageSlider.value)
+            : 10000,  // placeholder if premium mode (server will derive)
+        premiumBudget: currentMode === 'premium' ? Number(premiumSlider.value) : undefined,
+        smsConsent: document.getElementById('smsConsent').checked
+    };
 
     try {
         const res = await fetch('/api/quote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
         const json = await res.json();
-
         if (!res.ok) {
-            clearAllFieldErrors();
             if (Array.isArray(json.details)) {
-                json.details.forEach(({ field, message }) => {
-                    setFieldError(field, message || 'Invalid');
-                });
-                const first = json.details[0]?.field;
-                if (first) {
-                    const stepEl = document.getElementById(first)?.closest('.step');
-                    if (stepEl) showStep(Number(stepEl.dataset.step));
-                }
-            } else if (json.error) {
-                setFieldError('phone', json.error);
+                json.details.forEach(({field, message}) => setFieldError(field, message));
+            } else {
+                setFieldError('phone', json.error || 'Could not submit. Try again.');
             }
             return;
         }
 
-        // OTP already sent server-side. Show the verify panel.
         currentLeadId = json.leadId;
         currentContact = json.contact;
-        currentMethod = json.method || 'sms';
-
         otpContact.textContent = currentContact;
         otpError.hidden = true;
         otpSection.hidden = false;
         quoteSection.hidden = true;
         resultCard.hidden = false;
-
+        quoteCard.hidden = true;
         if (json.demo) {
             otpError.hidden = false;
-            otpError.innerHTML = '<strong>Demo mode:</strong> OTP code printed to server console (Twilio not configured).';
+            otpError.innerHTML = '<strong>Demo mode:</strong> Code printed to server console.';
         }
-
         resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
         document.getElementById('otp-code').focus();
     } catch (err) {
@@ -376,35 +191,7 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-function renderResult(q) {
-    document.getElementById('result-monthly').textContent = formatMoney(q.monthlyPremium.toFixed(2));
-    document.getElementById('result-annual').textContent = `≈ ${formatMoney(q.annualPremium.toFixed(2))} per year`;
-    document.getElementById('result-class').textContent = q.healthClass;
-    document.getElementById('result-bmi').textContent = q.bmi;
-}
-
-// ===== OTP =====
-async function requestOtp(contact, method) {
-    otpContact.textContent = contact;
-    otpError.hidden = true;
-    try {
-        const res = await fetch('/api/otp/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contact, method })
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Could not send code.');
-        if (json.demo) {
-            otpError.hidden = false;
-            otpError.innerHTML = '<strong>Demo mode:</strong> OTP code printed to server console.';
-        }
-    } catch (err) {
-        otpError.hidden = false;
-        otpError.textContent = err.message;
-    }
-}
-
+// --- OTP verify ---
 document.getElementById('otp-verify-btn').addEventListener('click', async () => {
     const code = document.getElementById('otp-code').value.trim();
     otpError.hidden = true;
@@ -425,17 +212,32 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
-        if (json.quote) renderResult(json.quote);
+        if (json.quote) {
+            document.getElementById('result-monthly').textContent = '$' + Number(json.quote.monthlyPremium).toFixed(2);
+            document.getElementById('result-annual').textContent = '≈ $' + Number(json.quote.annualPremium).toFixed(2) + ' per year';
+            document.getElementById('result-class').textContent = json.quote.healthClass || 'Level';
+        }
         otpSection.hidden = true;
         quoteSection.hidden = false;
-        quoteSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
         otpError.hidden = false;
         otpError.textContent = 'Verification failed. Please try again.';
     }
 });
 
-document.getElementById('otp-resend-btn').addEventListener('click', (e) => {
+document.getElementById('otp-resend-btn').addEventListener('click', async (e) => {
     e.preventDefault();
-    if (currentContact && currentMethod) requestOtp(currentContact, currentMethod);
+    if (!currentContact) return;
+    try {
+        await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact: currentContact, method: 'sms' })
+        });
+        otpError.hidden = false;
+        otpError.textContent = 'New code sent.';
+    } catch (err) {
+        otpError.hidden = false;
+        otpError.textContent = 'Could not resend.';
+    }
 });

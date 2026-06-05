@@ -1,21 +1,26 @@
 const express = require('express');
 const router = express.Router();
-const { validateQuoteInput, sanitizeQuoteInput } = require('../services/validation');
+const {
+    validateQuoteInput,
+    sanitizeQuoteInput,
+    validateFEQuoteInput,
+    sanitizeFEQuoteInput
+} = require('../services/validation');
 const { calculateQuote } = require('../services/quoteEngine');
 const { saveLead } = require('../services/dataStore');
 const { sendOtp } = require('../services/otpService');
 
 // POST /api/quote
-// Validates input, calculates quote (stored on lead), sends OTP.
-// Quote is NOT returned to the client until phone is verified.
+// Routes to either FE-specific or general validator based on policyType
 router.post('/', async (req, res, next) => {
     try {
-        const { valid, errors } = validateQuoteInput(req.body);
-        if (!valid) {
-            return res.status(400).json({ error: 'Validation failed', details: errors });
+        const isFE = req.body.policyType === 'final-expense';
+        const validation = isFE ? validateFEQuoteInput(req.body) : validateQuoteInput(req.body);
+        if (!validation.valid) {
+            return res.status(400).json({ error: 'Validation failed', details: validation.errors });
         }
 
-        const input = sanitizeQuoteInput(req.body);
+        const input = isFE ? sanitizeFEQuoteInput(req.body) : sanitizeQuoteInput(req.body);
         const quote = calculateQuote(input);
 
         const leadId = await saveLead({
@@ -27,7 +32,7 @@ router.post('/', async (req, res, next) => {
             age: input.age,
             gender: input.gender,
             state: input.state,
-            zipCode: input.zipCode,
+            zipCode: input.zipCode || '',
             height: input.height,
             weight: input.weight,
             bmi: quote.bmi,
@@ -50,7 +55,6 @@ router.post('/', async (req, res, next) => {
             notes: ''
         });
 
-        // Send OTP immediately — verification gates the quote reveal
         let otpResult;
         try {
             otpResult = await sendOtp({ contact: input.phone, method: 'sms' });
@@ -67,11 +71,7 @@ router.post('/', async (req, res, next) => {
             method: 'sms',
             demo: !!otpResult.demo,
             expiresInMinutes: otpResult.expiresInMinutes,
-            customer: {
-                firstName: input.firstName,
-                state: input.state
-            }
-            // NOTE: quote intentionally omitted — revealed after OTP verify.
+            customer: { firstName: input.firstName, state: input.state }
         });
     } catch (err) {
         next(err);

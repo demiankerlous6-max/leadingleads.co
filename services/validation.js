@@ -11,7 +11,9 @@ const US_STATES = [
 const VALID_GENDERS = ['male', 'female', 'other'];
 const VALID_SMOKING = ['never', 'former', 'current'];
 const VALID_HEALTH = ['excellent', 'good', 'average', 'poor'];
-const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal', 'iul'];
+const VALID_POLICY_TYPES = ['term-10', 'term-20', 'term-30', 'whole', 'universal', 'iul', 'final-expense'];
+const VALID_COVERAGE_TYPES = ['level', 'graded', 'modified'];
+const VALID_NICOTINE = ['none', 'cigarettes', 'cigars', 'vape', 'chewing'];
 
 // Per-policy maximum coverage amounts
 const POLICY_MAX_COVERAGE = {
@@ -20,7 +22,8 @@ const POLICY_MAX_COVERAGE = {
     'term-30':    5000000,
     'whole':       100000,   // Whole life capped at $100k
     'universal':  1000000,
-    'iul':        1000000    // Indexed Universal Life capped at $1M
+    'iul':        1000000,   // Indexed Universal Life capped at $1M
+    'final-expense': 50000   // Final Expense capped at $50k
 };
 
 const POLICY_DISPLAY_NAMES = {
@@ -205,7 +208,6 @@ function validateQuoteInput(data) {
         }
     });
 
-    // --- Policy + coverage with per-policy caps ---
     const policyType = data.policyType ? String(data.policyType).toLowerCase() : '';
     if (!policyType || !VALID_POLICY_TYPES.includes(policyType)) {
         push('policyType', 'Select a policy type');
@@ -219,17 +221,13 @@ function validateQuoteInput(data) {
         const maxAllowed = POLICY_MAX_COVERAGE[policyType];
         if (coverage > maxAllowed) {
             const policyName = POLICY_DISPLAY_NAMES[policyType] || policyType;
-            const maxLabel = maxAllowed >= 1000000
-                ? '$' + (maxAllowed / 1000000) + 'M'
-                : '$' + (maxAllowed / 1000) + 'k';
-            push('coverageAmount', `${policyName} is capped at ${maxLabel}`);
+            const maxLabel = maxAllowed >= 1000000 ? '$' + (maxAllowed / 1000000) + 'M' : '$' + (maxAllowed / 1000) + 'k';
+            push('coverageAmount', policyName + ' is capped at ' + maxLabel);
         }
     }
 
-    // --- Contact: phone REQUIRED, email OPTIONAL ---
-    if (!data.phone) {
-        push('phone', 'Required');
-    } else {
+    if (!data.phone) push('phone', 'Required');
+    else {
         const phone = String(data.phone).trim();
         const digits = phone.replace(/\D/g, '');
         if (!/^\+?1?[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{4}$/.test(phone)) {
@@ -244,14 +242,8 @@ function validateQuoteInput(data) {
         const email = String(data.email).trim();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
             push('email', 'Invalid email');
-        } else if (email.length > 254) {
-            push('email', 'Too long');
-        } else if (/^(test|admin|fake|asdf|noreply)@/i.test(email)) {
-            push('email', 'Use a real email');
         }
     }
-
-    // --- SMS opt-in consent (TCPA requirement) ---
     if (data.smsConsent !== true && data.smsConsent !== 'on' && data.smsConsent !== 'true') {
         push('smsConsent', 'You must agree to receive SMS to continue');
     }
@@ -285,14 +277,86 @@ function sanitizeQuoteInput(data) {
     };
 }
 
+function validateFEQuoteInput(data) {
+    const errors = [];
+    const push = (field, message) => errors.push({ field, message });
+    const fn = (data.firstName || '').trim();
+    if (!fn) push('firstName', 'Required');
+    else if (isJunkName(fn)) push('firstName', 'Not a real name');
+    const ln = (data.lastName || '').trim();
+    if (!ln) push('lastName', 'Required');
+    else if (isJunkName(ln)) push('lastName', 'Not a real name');
+    let age = null;
+    if (data.dateOfBirth) {
+        const dob = new Date(data.dateOfBirth);
+        if (isNaN(dob.getTime())) push('dateOfBirth', 'Invalid date');
+        else if (dob > new Date()) push('dateOfBirth', 'Cannot be in the future');
+        else age = calculateAge(data.dateOfBirth);
+    } else if (data.age) {
+        age = Number(data.age);
+    } else {
+        push('age', 'Birthday or age required');
+    }
+    if (age !== null && !isNaN(age)) {
+        if (age < 50) push('age', 'Final Expense requires age 50+');
+        else if (age > 85) push('age', 'Final Expense available up to age 85');
+    }
+    if (!data.gender || !VALID_GENDERS.includes(String(data.gender).toLowerCase())) push('gender', 'Select sex');
+    if (!data.state || !US_STATES.includes(String(data.state).toUpperCase())) push('state', 'Select your state');
+    const coverageType = data.coverageType ? String(data.coverageType).toLowerCase() : 'level';
+    if (!VALID_COVERAGE_TYPES.includes(coverageType)) push('coverageType', 'Select coverage type');
+    const nicotine = data.nicotineUse ? String(data.nicotineUse).toLowerCase() : 'none';
+    if (!VALID_NICOTINE.includes(nicotine)) push('nicotineUse', 'Select an option');
+    const coverage = Number(data.coverageAmount);
+    if (!coverage || isNaN(coverage) || coverage < 1000) push('coverageAmount', 'Coverage must be at least $1,000');
+    else if (coverage > 50000) push('coverageAmount', 'Final Expense capped at $50,000');
+    if (!data.phone) push('phone', 'Required');
+    else {
+        const digits = String(data.phone).replace(/\D/g, '');
+        if (digits.length < 10 || digits.length > 11) push('phone', 'Must have 10 digits');
+    }
+    if (data.email) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(data.email).trim())) push('email', 'Invalid email');
+    }
+    if (data.smsConsent !== true && data.smsConsent !== 'on' && data.smsConsent !== 'true') push('smsConsent', 'You must agree to receive SMS to continue');
+    return { valid: errors.length === 0, errors, parsedAge: age };
+}
+
+function sanitizeFEQuoteInput(data) {
+    const fe = validateFEQuoteInput(data);
+    return {
+        firstName: String(data.firstName).trim(),
+        lastName: String(data.lastName).trim(),
+        dateOfBirth: data.dateOfBirth || '',
+        age: fe.parsedAge,
+        gender: String(data.gender).toLowerCase(),
+        state: String(data.state).toUpperCase(),
+        nicotineUse: data.nicotineUse ? String(data.nicotineUse).toLowerCase() : 'none',
+        coverageType: data.coverageType ? String(data.coverageType).toLowerCase() : 'level',
+        policyType: 'final-expense',
+        coverageAmount: Number(data.coverageAmount) || 10000,
+        email: data.email ? String(data.email).trim().toLowerCase() : '',
+        phone: data.phone ? String(data.phone).trim() : '',
+        height: 70, weight: 170, smokingStatus: data.nicotineUse === 'none' ? 'never' : 'current',
+        healthRating: 'good',
+        hasDiabetes: false, hasHeartDisease: false, hasCancerHistory: false, familyHistoryHeartDisease: false,
+        smsConsent: true,
+        smsConsentTimestamp: new Date().toISOString()
+    };
+}
+
 module.exports = {
     validateQuoteInput,
     sanitizeQuoteInput,
+    validateFEQuoteInput,
+    sanitizeFEQuoteInput,
     calculateAge,
     parseHeightToInches,
     US_STATES,
     POLICY_MAX_COVERAGE,
     POLICY_DISPLAY_NAMES,
+    VALID_COVERAGE_TYPES,
+    VALID_NICOTINE,
     LIMITS: {
         ABSOLUTE_MAX_AGE, ELIGIBLE_MIN_AGE, ELIGIBLE_MAX_AGE,
         MIN_HEIGHT_INCHES, MAX_HEIGHT_INCHES,
