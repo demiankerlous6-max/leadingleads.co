@@ -218,6 +218,57 @@
         .ll-result-meta { text-align: center; color: var(--ll-muted); font-size: 14px; margin-bottom: 8px; }
         .ll-result-meta strong { color: var(--ll-navy); }
 
+        .ll-disclaimer {
+            text-align: center; font-size: 12px; color: var(--ll-muted);
+            margin: 18px 0 0; padding: 12px 14px; background: #FAF6EE;
+            border-radius: 10px; line-height: 1.5;
+        }
+
+        /* Interest form (post-quote) */
+        .ll-divider {
+            height: 1px; background: linear-gradient(90deg, transparent, #E5E1D6, transparent);
+            margin: 32px 0 28px;
+        }
+        .ll-interest-title {
+            font-family: 'DM Serif Display', serif; font-weight: 400;
+            color: var(--ll-navy); font-size: 26px; line-height: 1.2;
+            margin: 0 0 10px; letter-spacing: -0.01em;
+        }
+        .ll-interest-sub {
+            color: var(--ll-muted); font-size: 15px; line-height: 1.55;
+            margin: 0 0 18px;
+        }
+        .ll-interest-sub strong { color: var(--ll-navy); font-weight: 600; }
+        .ll-interest-list {
+            list-style: none; padding: 0; margin: 0 0 22px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .ll-interest-list li {
+            display: flex; align-items: flex-start; gap: 10px;
+            font-size: 14px; color: var(--ll-navy); line-height: 1.4;
+        }
+        .ll-interest-list .check {
+            display: inline-grid; place-items: center;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: rgba(255, 107, 71, 0.12); color: var(--ll-coral);
+            font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+        }
+        .btn-link-muted {
+            display: block; margin: 14px auto 0; background: none; border: none;
+            color: var(--ll-muted); font-size: 13px; cursor: pointer;
+            text-decoration: underline; font-family: inherit; padding: 6px;
+        }
+        .btn-link-muted:hover { color: var(--ll-navy); }
+
+        /* Success state */
+        .ll-success-check {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white; font-size: 32px; font-weight: 700;
+            display: grid; place-items: center; margin: 0 auto 18px;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
         @media (max-width: 600px) {
             .fex-row { flex-direction: column; align-items: stretch; }
             .fex-row label { min-width: 0; }
@@ -361,23 +412,52 @@
     </section>
 
     <section class="ll-card" id="result-card" hidden>
-        <span class="corner-tag">Verified</span>
-        <div id="otp-section">
-            <h2>Verify your phone</h2>
-            <p class="ll-subtitle">We just texted a 6-digit code to <strong id="otp-contact"></strong></p>
+        <span class="corner-tag">Your Quote</span>
+
+        <!-- 1. Quote display (shown first) -->
+        <div id="quote-section">
+            <h2>Your estimated rate</h2>
+            <p class="ll-subtitle" id="quote-coverage-label">Final Expense coverage</p>
+            <div class="ll-result-num" id="result-monthly">$0<span class="per-mo"> /mo</span></div>
+            <p class="ll-result-meta" id="result-annual"></p>
+            <p class="ll-result-meta">Plan: <strong id="result-class"></strong></p>
+            <p class="ll-disclaimer">Estimated rate based on the information you provided. Final pricing is locked in after a brief review with a licensed agent.</p>
+        </div>
+
+        <!-- 2. Interest form (shown right after the quote) -->
+        <div id="interest-section" hidden>
+            <div class="ll-divider"></div>
+            <h3 class="ll-interest-title">Like what you see?</h3>
+            <p class="ll-interest-sub">A licensed agent <strong id="interest-state-label">in your state</strong> can lock in this rate, answer any questions, and walk you through next steps — at no cost and no obligation.</p>
+            <ul class="ll-interest-list">
+                <li><span class="check">✓</span> Free, no-obligation policy review</li>
+                <li><span class="check">✓</span> Licensed in your state, knows your local rates</li>
+                <li><span class="check">✓</span> Your number stays with us — never sold or shared</li>
+            </ul>
+            <button class="fex-submit" id="interest-yes-btn">Yes, Connect Me With An Agent</button>
+            <button type="button" class="btn-link-muted" id="interest-no-btn">Not right now — I'm just browsing</button>
+        </div>
+
+        <!-- 3. OTP verification (shown after user expresses interest) -->
+        <div id="otp-section" hidden>
+            <div class="ll-divider"></div>
+            <h3 class="ll-interest-title">One last step — verify your number</h3>
+            <p class="ll-subtitle">We just texted a 6-digit code to <strong id="otp-contact"></strong>. This confirms we have the right number for your agent to reach you.</p>
             <input type="text" id="otp-code" maxlength="6" inputmode="numeric"
                    style="width:100%;padding:16px;font-size:28px;text-align:center;letter-spacing:14px;font-family:'DM Serif Display',serif;border:1.5px solid #E5E1D6;border-radius:12px;margin:12px 0 14px;color:#1E2A5A;"
                    placeholder="------">
             <div id="otp-error" class="alert alert-error" hidden></div>
-            <button class="fex-submit" id="otp-verify-btn">Verify &amp; Show My Quote</button>
+            <button class="fex-submit" id="otp-verify-btn">Verify &amp; Connect Me</button>
             <button class="btn btn-link" id="otp-resend-btn" style="display:block;margin:14px auto 0;color:#1E2A5A;">Resend code</button>
         </div>
-        <div id="quote-section" hidden>
-            <h2>Your estimated rate</h2>
-            <div class="ll-result-num" id="result-monthly">$0<span class="per-mo"> /mo</span></div>
-            <p class="ll-result-meta" id="result-annual"></p>
-            <p class="ll-result-meta">Plan: <strong id="result-class"></strong></p>
-            <p style="text-align:center;color:#6B7280;font-size:14px;margin-top:24px;padding:16px;background:#FAF6EE;border-radius:10px;">A licensed agent will reach out within 1 business day to finalize your coverage.</p>
+
+        <!-- 4. Final confirmation -->
+        <div id="success-section" hidden>
+            <div class="ll-divider"></div>
+            <div class="ll-success-check">✓</div>
+            <h3 class="ll-interest-title" style="text-align:center;">You're all set!</h3>
+            <p class="ll-subtitle" style="text-align:center;">A licensed agent will reach out within <strong>1 business day</strong> to finalize your coverage and answer any questions.</p>
+            <p style="text-align:center;color:#6B7280;font-size:13px;margin-top:18px;">Reference: <span id="success-ref" style="font-family:monospace;color:#1E2A5A;"></span></p>
         </div>
     </section>
 

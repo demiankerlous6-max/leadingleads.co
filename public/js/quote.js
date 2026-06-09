@@ -1,4 +1,4 @@
-// Final Expense Quoter — single-page form, OTP flow, Vonage verification.
+// Final Expense Quoter — quote-first flow, optional verification.
 
 const US_STATES = [
     ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
@@ -21,14 +21,44 @@ stateSelect.innerHTML = '<option value="">Select...</option>' +
 const form = document.getElementById('quote-form');
 const quoteCard = document.getElementById('quote-card');
 const resultCard = document.getElementById('result-card');
-const otpSection = document.getElementById('otp-section');
 const quoteSection = document.getElementById('quote-section');
+const interestSection = document.getElementById('interest-section');
+const otpSection = document.getElementById('otp-section');
+const successSection = document.getElementById('success-section');
 const otpError = document.getElementById('otp-error');
 const otpContact = document.getElementById('otp-contact');
 
 let currentLeadId = null;
 let currentContact = null;
 let currentMode = 'face';   // 'face' or 'premium'
+
+// Display helpers — formats US phone for display
+function formatPhoneDisplay(raw) {
+    const d = String(raw || '').replace(/\D/g, '').slice(-10);
+    if (d.length !== 10) return raw;
+    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+}
+
+function renderQuote(q) {
+    const monthlyEl = document.getElementById('result-monthly');
+    const annualEl = document.getElementById('result-annual');
+    if (q.lumpSum) {
+        monthlyEl.innerHTML = '$' + Number(q.lumpSum).toLocaleString() + '<span class="per-mo"> one-time</span>';
+        annualEl.textContent = 'Single Premium Whole Life — paid in full, no future premiums';
+    } else if (q.healthClass && q.healthClass.indexOf('Limited Pay') >= 0) {
+        monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
+        annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year, paid up after 10 years';
+    } else {
+        monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
+        annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year';
+    }
+    document.getElementById('result-class').textContent = q.healthClass || 'Level';
+    // Coverage label
+    const covLabel = document.getElementById('quote-coverage-label');
+    if (covLabel && q.coverageAmount) {
+        covLabel.textContent = 'Final Expense — $' + Number(q.coverageAmount).toLocaleString() + ' coverage';
+    }
+}
 
 // --- Toggle pill behavior ---
 document.querySelectorAll('.fex-pill[data-mode]').forEach(pill => {
@@ -156,6 +186,12 @@ form.addEventListener('submit', async (e) => {
         smsConsent: document.getElementById('smsConsent').checked
     };
 
+    // Show loading state on the button
+    const submitBtn = form.querySelector('.fex-submit');
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Calculating...';
+
     try {
         const res = await fetch('/api/quote', {
             method: 'POST',
@@ -164,6 +200,8 @@ form.addEventListener('submit', async (e) => {
         });
         const json = await res.json();
         if (!res.ok) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalBtnText;
             if (Array.isArray(json.details)) {
                 json.details.forEach(({field, message}) => setFieldError(field, message));
             } else {
@@ -174,24 +212,84 @@ form.addEventListener('submit', async (e) => {
 
         currentLeadId = json.leadId;
         currentContact = json.contact;
-        otpContact.textContent = currentContact;
-        otpError.hidden = true;
-        otpSection.hidden = false;
-        quoteSection.hidden = true;
+
+        // Render the quote immediately — no verification yet
+        if (json.quote) renderQuote(json.quote);
+
+        // Personalize the interest section with state name (if returned)
+        const stateLabel = document.getElementById('interest-state-label');
+        if (stateLabel && json.customer && json.customer.state) {
+            const stateName = (US_STATES.find(([code]) => code === json.customer.state) || [,''])[1];
+            stateLabel.textContent = stateName ? `licensed in ${stateName}` : 'in your state';
+        }
+
+        // Reveal quote + interest sections; keep OTP/success hidden
+        quoteSection.hidden = false;
+        interestSection.hidden = false;
+        otpSection.hidden = true;
+        successSection.hidden = true;
         resultCard.hidden = false;
         quoteCard.hidden = true;
-        if (json.demo) {
-            otpError.hidden = false;
-            otpError.innerHTML = '<strong>Demo mode:</strong> Code printed to server console.';
-        }
         resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        document.getElementById('otp-code').focus();
     } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
         setFieldError('phone', 'Network error — try again');
     }
 });
 
-// --- OTP verify ---
+// --- Interest CTA — user clicks "Yes, connect me" ---
+document.getElementById('interest-yes-btn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Sending verification code...';
+    try {
+        const res = await fetch('/api/otp/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact: currentContact, method: 'sms' })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            btn.disabled = false;
+            btn.textContent = 'Yes, Connect Me With An Agent';
+            otpError.hidden = false;
+            otpError.textContent = json.error || 'Could not send code. Please try again.';
+            return;
+        }
+        // Swap interest section -> OTP section
+        otpContact.textContent = formatPhoneDisplay(currentContact);
+        otpError.hidden = true;
+        interestSection.hidden = true;
+        otpSection.hidden = false;
+        if (json.demo) {
+            otpError.hidden = false;
+            otpError.innerHTML = '<strong>Demo mode:</strong> Code printed to server console.';
+        }
+        document.getElementById('otp-code').focus();
+        otpSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Yes, Connect Me With An Agent';
+        otpError.hidden = false;
+        otpError.textContent = 'Network error — please try again.';
+    }
+});
+
+// --- "Not right now" link ---
+document.getElementById('interest-no-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    interestSection.hidden = true;
+    // Show a polite footer note
+    const footer = document.createElement('p');
+    footer.className = 'll-disclaimer';
+    footer.style.marginTop = '20px';
+    footer.innerHTML = 'No problem — your quote is yours to keep. Come back any time, or <a href="/quote.html" style="color:var(--ll-navy);">start a new quote</a>.';
+    quoteSection.appendChild(footer);
+});
+
+// --- OTP verify — marks lead Verified and shows success screen ---
 document.getElementById('otp-verify-btn').addEventListener('click', async () => {
     const code = document.getElementById('otp-code').value.trim();
     otpError.hidden = true;
@@ -200,6 +298,9 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
         otpError.textContent = 'Enter the 6-digit code.';
         return;
     }
+    const verifyBtn = document.getElementById('otp-verify-btn');
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying...';
     try {
         const res = await fetch('/api/otp/verify', {
             method: 'POST',
@@ -208,29 +309,21 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
         });
         const json = await res.json();
         if (!res.ok || !json.verified) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify & Connect Me';
             otpError.hidden = false;
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
-                if (json.quote) {
-            const q = json.quote;
-            const monthlyEl = document.getElementById('result-monthly');
-            const annualEl = document.getElementById('result-annual');
-            if (q.lumpSum) {
-                monthlyEl.innerHTML = '$' + Number(q.lumpSum).toLocaleString() + '<span class="per-mo"> one-time</span>';
-                annualEl.textContent = 'Single Premium Whole Life: paid in full, no future premiums';
-            } else if (q.healthClass && q.healthClass.indexOf('Limited Pay') >= 0) {
-                monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
-                annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year, paid up after 10 years';
-            } else {
-                monthlyEl.innerHTML = '$' + Number(q.monthlyPremium).toFixed(2) + '<span class="per-mo"> /mo</span>';
-                annualEl.textContent = '$' + Number(q.annualPremium).toFixed(2) + ' per year';
-            }
-            document.getElementById('result-class').textContent = q.healthClass || 'Level';
-        }
+        // Success — hide OTP, show success
         otpSection.hidden = true;
-        quoteSection.hidden = false;
+        successSection.hidden = false;
+        const ref = document.getElementById('success-ref');
+        if (ref && currentLeadId) ref.textContent = String(currentLeadId).split('-')[0].toUpperCase();
+        successSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify & Connect Me';
         otpError.hidden = false;
         otpError.textContent = 'Verification failed. Please try again.';
     }

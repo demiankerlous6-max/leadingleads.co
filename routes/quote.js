@@ -8,10 +8,10 @@ const {
 } = require('../services/validation');
 const { calculateQuote } = require('../services/quoteEngine');
 const { saveLead } = require('../services/dataStore');
-const { sendOtp } = require('../services/otpService');
 
 // POST /api/quote
-// Routes to either FE-specific or general validator based on policyType
+// Returns the quote immediately and saves the lead with verified=false.
+// Phone verification happens later when the user expresses interest.
 router.post('/', async (req, res, next) => {
     try {
         const isFE = req.body.policyType === 'final-expense';
@@ -55,23 +55,19 @@ router.post('/', async (req, res, next) => {
             notes: ''
         });
 
-        let otpResult;
-        try {
-            otpResult = await sendOtp({ contact: input.phone, method: 'sms' });
-        } catch (err) {
-            return res.status(502).json({
-                error: 'Could not send verification code. Please try again.',
-                details: err.message
-            });
-        }
-
+        // Return quote details — frontend shows them BEFORE asking for verification.
         res.json({
             leadId,
             contact: input.phone,
-            method: 'sms',
-            demo: !!otpResult.demo,
-            expiresInMinutes: otpResult.expiresInMinutes,
-            customer: { firstName: input.firstName, state: input.state }
+            customer: { firstName: input.firstName, state: input.state },
+            quote: {
+                monthlyPremium: quote.monthlyPremium,
+                annualPremium: quote.annualPremium,
+                healthClass: quote.healthClass,
+                lumpSum: quote.lumpSum || null,
+                coverageAmount: input.coverageAmount,
+                policyType: input.policyType
+            }
         });
     } catch (err) {
         next(err);
