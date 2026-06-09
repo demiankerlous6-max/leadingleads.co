@@ -6,8 +6,8 @@ const POLICIES = [
         name: 'Level Coverage',
         category: 'Final Expense',
         shortDescription: 'Full death benefit from day 1. Best rates for healthy applicants.',
-        longDescription: 'Level final expense pays out the full face amount from the very first day. Best monthly rates of the three coverage types. Requires basic health questions but no medical exam. Most common choice for healthy applicants ages 50–75.',
-        idealFor: ['Healthy applicants 50–75', 'Day-one full coverage', 'Lowest monthly cost'],
+        longDescription: 'Level final expense pays out the full face amount from the very first day. Best monthly rates of the three coverage types. Requires basic health questions but no medical exam. Available to applicants ages 18–85 — best rates for healthy applicants 18–60.',
+        idealFor: ['Healthy applicants 18–60', 'Day-one full coverage', 'Lowest monthly cost'],
         features: [
             'Day-one full death benefit',
             'No medical exam',

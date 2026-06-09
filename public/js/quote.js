@@ -85,7 +85,7 @@ function syncAgeFromDob() {
 ageInput.addEventListener('input', () => {
     // Clear DOB fields when age is entered directly
     const a = Number(ageInput.value);
-    if (a >= 50 && a <= 85 && !dobMonth.value && !dobDay.value && !dobYear.value) {
+    if (a >= 18 && a <= 85 && !dobMonth.value && !dobDay.value && !dobYear.value) {
         // Don't override DOB if user wants to fill it separately
     }
 });

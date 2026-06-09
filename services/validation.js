@@ -298,8 +298,8 @@ function validateFEQuoteInput(data) {
         push('age', 'Birthday or age required');
     }
     if (age !== null && !isNaN(age)) {
-        if (age < 50) push('age', 'Final Expense requires age 50+');
-        else if (age > 85) push('age', 'Final Expense available up to age 85');
+        if (age < 18) push('age', 'Must be 18 or older');
+        else if (age > 85) push('age', 'Coverage available up to age 85');
     }
     if (!data.gender || !VALID_GENDERS.includes(String(data.gender).toLowerCase())) push('gender', 'Select sex');
     if (!data.state || !US_STATES.includes(String(data.state).toUpperCase())) push('state', 'Select your state');

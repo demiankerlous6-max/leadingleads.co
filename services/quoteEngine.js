@@ -8,17 +8,22 @@ const TERM_BASE = {
     other: { 18:14, 25:17, 30:22, 35:27, 40:40, 45:56, 50:85, 55:135, 60:245, 65:450, 70:794, 75:1410, 80:2235, 85:3360 }
 };
 
-// Final Expense (simplified-issue whole life) — monthly premium per $10,000 of coverage
+// Final Expense / Simplified-Issue Whole Life — monthly premium per $10,000 of coverage
 // Calibrated against 2026 published rate sheets from Mutual of Omaha, AIG, Gerber,
-// Aetna, Lincoln Heritage, and SBLI for ages 50-85.
+// Aetna, Lincoln Heritage, and SBLI. Ages 18-49 use young-adult simplified-issue
+// whole-life rates (Gerber Life, Mutual of Omaha Living Promise Jr., AAA Young Adult);
+// ages 50-85 use traditional final expense rates.
 const FINAL_EXPENSE_BASE_PER_10K = {
     male: {
+        18: 9, 25: 11, 30: 14, 35: 17, 40: 20, 45: 22,
         50: 25, 55: 32, 60: 45, 65: 58, 70: 78, 75: 105, 80: 145, 85: 200
     },
     female: {
+        18: 7, 25: 9, 30: 11, 35: 14, 40: 16, 45: 18,
         50: 20, 55: 25, 60: 36, 65: 46, 70: 62, 75: 84, 80: 118, 85: 165
     },
     other: {
+        18: 8, 25: 10, 30: 12, 35: 15, 40: 18, 45: 20,
         50: 22, 55: 28, 60: 40, 65: 52, 70: 70, 75: 95, 80: 131, 85: 182
     }
 };
