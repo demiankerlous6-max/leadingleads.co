@@ -20,7 +20,7 @@
                         <ul>${p.features.map(f => `<li>${f}</li>`).join('')}</ul>
                     </div>
                 </div>
-                <p style="margin-top:20px;color:var(--gray-500);">Starting from <strong style="color:var(--dark);">$${p.startingFrom}/month</strong></p>
+                <p style="margin-top:20px;color:var(--gray-500);">Estimates start around <strong style="color:var(--dark);">$${p.startingFrom}/month</strong> for younger, healthier applicants. Your actual rate depends on age, gender, state, nicotine use, and carrier underwriting.</p>
             </article>
         `).join('');
     } catch (err) {

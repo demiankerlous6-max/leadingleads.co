@@ -10,7 +10,7 @@
                 <span class="category">${p.category}</span>
                 <h3>${p.name}</h3>
                 <p class="short">${p.shortDescription}</p>
-                <div class="price-from">Starting from <strong>$${p.startingFrom}/mo</strong></div>
+                <div class="price-from">Estimates from <strong>$${p.startingFrom}/mo</strong></div>
             </a>
         `).join('');
     } catch (err) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Final Expense Quote — LeadingLeads.co</title>
+    <title>Final Expense Estimate — LeadingLeads.co</title>
     <link rel="stylesheet" href="/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Serif+Display&display=swap" rel="stylesheet">
     <style>
@@ -340,20 +340,20 @@
     </header>
 
     <section class="ll-hero">
-        <h1>Your final expense quote, <span class="accent">in minutes</span>.</h1>
-        <p>Real 2026 carrier pricing. No medical exam. Ages 18–85, coverage from $1K to $100K.</p>
+        <h1>Your final expense estimate, <span class="accent">in minutes</span>.</h1>
+        <p>Personalized estimate calibrated against 2026 industry rate data. No medical exam for most applicants. Ages 18–85, coverage from $1K to $100K.</p>
         <div class="ll-badges">
             <span class="ll-badge"><span class="check">✓</span> No medical exam</span>
             <span class="ll-badge"><span class="check">✓</span> All 50 states</span>
-            <span class="ll-badge"><span class="check">✓</span> SMS-verified</span>
+            <span class="ll-badge"><span class="check">✓</span> Opt-in only</span>
         </div>
     </section>
 
     <section class="ll-card" id="quote-card">
-        <span class="corner-tag">Free Quote</span>
+        <span class="corner-tag">Free Estimate</span>
 
-        <h2>Find your rate</h2>
-        <p class="ll-subtitle">8 short questions. Real pricing.</p>
+        <h2>Get your estimate</h2>
+        <p class="ll-subtitle">8 short questions. Personalized estimate based on industry rate data.</p>
 
         <form id="quote-form" novalidate>
 
@@ -454,16 +454,16 @@
             <div class="fex-consent">
                 <label>
                     <input type="checkbox" id="smsConsent" required>
-                    <span>I agree to receive SMS messages from LeadingLeads.co for verification and follow-up. Message/data rates may apply. Reply STOP to opt out. <a href="/privacy.html" target="_blank">Privacy Policy</a></span>
+                    <span>I agree to receive a one-time SMS verification code from LeadingLeads.co. Message/data rates may apply. Reply STOP to opt out. See our <a href="/privacy.html" target="_blank">Privacy Policy</a> and <a href="/terms.html" target="_blank">Terms</a>.</span>
                 </label>
             </div>
 
-            <button type="submit" class="fex-submit">Get My Quote</button>
+            <button type="submit" class="fex-submit">Get My Estimate</button>
         </form>
     </section>
 
     <section class="ll-card" id="result-card" hidden>
-        <span class="corner-tag">Your Quote</span>
+        <span class="corner-tag">Your Estimate</span>
 
         <!-- 1. Quote display (shown first) -->
         <div id="quote-section">
@@ -472,20 +472,20 @@
             <div class="ll-result-num" id="result-monthly">$0<span class="per-mo"> /mo</span></div>
             <p class="ll-result-meta" id="result-annual"></p>
             <p class="ll-result-meta">Plan: <strong id="result-class"></strong></p>
-            <p class="ll-disclaimer">Estimated rate based on the information you provided. Final pricing is locked in after a brief review with a licensed agent.</p>
+            <p class="ll-disclaimer"><strong>This is an estimate</strong>, not a binding offer of insurance. Pricing is based on the information you provided and may change after a licensed insurance agent reviews your application and the carrier completes underwriting.</p>
         </div>
 
         <!-- 2. Interest form — checkbox consent that requires phone verification to check -->
         <div id="interest-section" hidden>
             <div class="ll-divider"></div>
-            <h3 class="ll-interest-title">Interested in this rate?</h3>
-            <p class="ll-interest-sub">If you'd like a licensed agent <strong id="interest-state-label">in your state</strong> to reach out and walk you through this coverage, check the box below. To prevent fraud and confirm it's your number, we'll send you a quick 6-digit code.</p>
+            <h3 class="ll-interest-title">Interested in this estimate?</h3>
+            <p class="ll-interest-sub">If you'd like a licensed insurance agent <strong id="interest-state-label">in your state</strong> to reach out and walk you through your options, check the box below. To confirm we have the right number, we'll send you a quick 6-digit code.</p>
 
             <div class="ll-consent-box" id="ll-consent-box">
                 <button type="button" class="ll-checkbox-row" id="interest-checkbox-btn" aria-checked="false" role="checkbox">
                     <span class="ll-checkbox" id="interest-checkbox-square"></span>
                     <span class="ll-checkbox-text">
-                        Yes, I consent to a licensed agent from LeadingLeads.co calling me at <strong id="interest-phone-display">my number</strong> to discuss this quote. No purchase obligation.
+                        Yes, I expressly consent to receive a phone call from a licensed insurance agent referred by LeadingLeads.co at <strong id="interest-phone-display">my number</strong> to discuss this estimate. I understand this consent is not a condition of purchase, and I can opt out at any time.
                     </span>
                 </button>
 
@@ -506,20 +506,20 @@
                 <!-- Success state — shown after OTP verifies, checkbox now ✓ -->
                 <div id="success-section" hidden>
                     <div class="ll-verified-banner">
-                        <strong>You're all set.</strong> A licensed agent will reach out within <strong>1 business day</strong> to finalize your coverage.
+                        <strong>You're all set.</strong> A licensed insurance agent will be in touch within <strong>1 business day</strong> to discuss your options. Final coverage and pricing are subject to carrier underwriting.
                     </div>
                     <p style="text-align:center;color:#6B7280;font-size:12px;margin-top:14px;">Reference: <span id="success-ref" style="font-family:monospace;color:#1E2A5A;"></span></p>
                 </div>
             </div>
 
-            <button type="button" class="btn-link-muted" id="interest-no-btn">No thanks, I'm just browsing the rates</button>
+            <button type="button" class="btn-link-muted" id="interest-no-btn">No thanks, I'm just browsing the estimates</button>
         </div>
     </section>
 
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2026 LeadingLeads.co</p>
-            <p style="margin-top:8px;"><a href="/privacy.html" style="color:#fff">Privacy Policy</a> &middot; <a href="/terms.html" style="color:#fff">Terms of Service</a></p>
+            <p>&copy; 2026 LeadingLeads.co &middot; Lead-generation service. Not a licensed insurance broker or carrier. Estimates are not binding offers.</p>
+            <p style="margin-top:8px;"><a href="/privacy.html" style="color:#fff">Privacy Policy</a> &middot; <a href="/terms.html" style="color:#fff">Terms of Service</a> &middot; <a href="mailto:demiankerlous6@gmail.com" style="color:#fff">Contact</a></p>
         </div>
     </footer>
 
