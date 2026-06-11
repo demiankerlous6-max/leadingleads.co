@@ -223,6 +223,10 @@ form.addEventListener('submit', async (e) => {
             stateLabel.textContent = stateName ? `licensed in ${stateName}` : 'in your state';
         }
 
+        // Show user's phone in the consent statement
+        const phoneDisplay = document.getElementById('interest-phone-display');
+        if (phoneDisplay) phoneDisplay.textContent = formatPhoneDisplay(currentContact);
+
         // Reveal quote + interest sections; keep OTP/success hidden
         quoteSection.hidden = false;
         interestSection.hidden = false;
@@ -238,12 +242,22 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-// --- Interest CTA — user clicks "Yes, connect me" ---
-document.getElementById('interest-yes-btn').addEventListener('click', async (e) => {
+// --- Consent checkbox — clicking it triggers OTP send. Must verify to "check" it. ---
+const consentBtn = document.getElementById('interest-checkbox-btn');
+const consentSquare = document.getElementById('interest-checkbox-square');
+const consentBox = document.getElementById('ll-consent-box');
+
+consentBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    const btn = e.currentTarget;
-    btn.disabled = true;
-    btn.textContent = 'Sending verification code...';
+    // Ignore clicks once already verified
+    if (consentBtn.getAttribute('aria-checked') === 'true') return;
+    // If OTP input is already shown, don't re-send — let them finish entering the code
+    if (!otpSection.hidden) {
+        document.getElementById('otp-code').focus();
+        return;
+    }
+    // Show loading spinner on the checkbox while sending the code
+    consentSquare.classList.add('loading');
     try {
         const res = await fetch('/api/otp/send', {
             method: 'POST',
@@ -251,17 +265,16 @@ document.getElementById('interest-yes-btn').addEventListener('click', async (e) 
             body: JSON.stringify({ contact: currentContact, method: 'sms' })
         });
         const json = await res.json();
+        consentSquare.classList.remove('loading');
         if (!res.ok) {
-            btn.disabled = false;
-            btn.textContent = 'Yes, Connect Me With An Agent';
+            otpSection.hidden = false;
             otpError.hidden = false;
             otpError.textContent = json.error || 'Could not send code. Please try again.';
             return;
         }
-        // Swap interest section -> OTP section
+        // Reveal OTP step below the consent box
         otpContact.textContent = formatPhoneDisplay(currentContact);
         otpError.hidden = true;
-        interestSection.hidden = true;
         otpSection.hidden = false;
         if (json.demo) {
             otpError.hidden = false;
@@ -270,14 +283,14 @@ document.getElementById('interest-yes-btn').addEventListener('click', async (e) 
         document.getElementById('otp-code').focus();
         otpSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'Yes, Connect Me With An Agent';
+        consentSquare.classList.remove('loading');
+        otpSection.hidden = false;
         otpError.hidden = false;
         otpError.textContent = 'Network error — please try again.';
     }
 });
 
-// --- "Not right now" link ---
+// --- "No thanks" link ---
 document.getElementById('interest-no-btn').addEventListener('click', (e) => {
     e.preventDefault();
     interestSection.hidden = true;
@@ -289,7 +302,7 @@ document.getElementById('interest-no-btn').addEventListener('click', (e) => {
     quoteSection.appendChild(footer);
 });
 
-// --- OTP verify — marks lead Verified and shows success screen ---
+// --- OTP verify — marks the consent box as ✓ checked and shows confirmation ---
 document.getElementById('otp-verify-btn').addEventListener('click', async () => {
     const code = document.getElementById('otp-code').value.trim();
     otpError.hidden = true;
@@ -310,20 +323,27 @@ document.getElementById('otp-verify-btn').addEventListener('click', async () => 
         const json = await res.json();
         if (!res.ok || !json.verified) {
             verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Verify & Connect Me';
+            verifyBtn.textContent = 'Confirm';
             otpError.hidden = false;
             otpError.textContent = json.reason || json.error || 'Invalid code.';
             return;
         }
-        // Success — hide OTP, show success
+        // ✓ Check the consent box, lock it, and reveal success message
+        consentSquare.classList.remove('loading');
+        consentSquare.classList.add('checked');
+        consentBtn.setAttribute('aria-checked', 'true');
+        consentBtn.disabled = true;
+        consentBox.classList.add('verified');
         otpSection.hidden = true;
         successSection.hidden = false;
+        const noBtn = document.getElementById('interest-no-btn');
+        if (noBtn) noBtn.hidden = true;
         const ref = document.getElementById('success-ref');
         if (ref && currentLeadId) ref.textContent = String(currentLeadId).split('-')[0].toUpperCase();
         successSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify & Connect Me';
+        verifyBtn.textContent = 'Confirm';
         otpError.hidden = false;
         otpError.textContent = 'Verification failed. Please try again.';
     }

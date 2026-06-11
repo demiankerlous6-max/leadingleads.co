@@ -260,14 +260,65 @@
         }
         .btn-link-muted:hover { color: var(--ll-navy); }
 
-        /* Success state */
-        .ll-success-check {
-            width: 64px; height: 64px; border-radius: 50%;
-            background: linear-gradient(135deg, #10B981, #059669);
-            color: white; font-size: 32px; font-weight: 700;
-            display: grid; place-items: center; margin: 0 auto 18px;
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        /* Consent checkbox card — the core of the new interest form */
+        .ll-consent-box {
+            background: #FAF6EE; border: 1.5px solid #E5E1D6;
+            border-radius: 14px; padding: 18px; margin: 4px 0 12px;
+            transition: border-color 0.2s, background 0.2s;
         }
+        .ll-consent-box.verified {
+            border-color: #10B981; background: rgba(16, 185, 129, 0.06);
+        }
+        .ll-checkbox-row {
+            display: flex; align-items: flex-start; gap: 14px;
+            width: 100%; padding: 4px; background: none; border: none;
+            text-align: left; cursor: pointer; font-family: inherit;
+        }
+        .ll-checkbox-row:hover .ll-checkbox { border-color: var(--ll-coral); }
+        .ll-checkbox-row[aria-checked="true"] { cursor: default; }
+        .ll-checkbox {
+            flex-shrink: 0; width: 26px; height: 26px;
+            border: 2px solid #C4C0B5; border-radius: 7px;
+            background: white; transition: all 0.25s ease;
+            display: grid; place-items: center; margin-top: 1px;
+            position: relative;
+        }
+        .ll-checkbox.loading {
+            border-color: var(--ll-coral);
+            border-top-color: transparent;
+            animation: ll-spin 0.7s linear infinite;
+        }
+        @keyframes ll-spin { to { transform: rotate(360deg); } }
+        .ll-checkbox.checked {
+            background: #10B981; border-color: #10B981;
+        }
+        .ll-checkbox.checked::after {
+            content: ""; position: absolute;
+            width: 7px; height: 13px;
+            border: solid white; border-width: 0 3px 3px 0;
+            transform: rotate(45deg) translate(-1px, -2px);
+        }
+        .ll-checkbox-text {
+            font-size: 14px; line-height: 1.5; color: var(--ll-navy);
+            font-family: 'Inter', sans-serif; font-weight: 400;
+        }
+        .ll-checkbox-text strong { font-weight: 600; }
+        .ll-otp-prompt { margin-top: 16px; padding-top: 16px; border-top: 1px dashed #E5E1D6; }
+        .ll-otp-prompt p { font-size: 13px; color: var(--ll-muted); margin: 6px 0 0; line-height: 1.5; }
+        .ll-otp-prompt strong { color: var(--ll-navy); }
+        .ll-step-pill {
+            display: inline-block; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            background: var(--ll-coral); color: white;
+            padding: 3px 9px; border-radius: 10px;
+        }
+        .ll-verified-banner {
+            margin-top: 16px; padding: 14px 16px;
+            background: white; border-radius: 10px;
+            font-size: 14px; line-height: 1.5; color: var(--ll-navy);
+            text-align: center;
+        }
+        .ll-verified-banner strong { color: #059669; }
 
         @media (max-width: 600px) {
             .fex-row { flex-direction: column; align-items: stretch; }
@@ -424,40 +475,44 @@
             <p class="ll-disclaimer">Estimated rate based on the information you provided. Final pricing is locked in after a brief review with a licensed agent.</p>
         </div>
 
-        <!-- 2. Interest form (shown right after the quote) -->
+        <!-- 2. Interest form — checkbox consent that requires phone verification to check -->
         <div id="interest-section" hidden>
             <div class="ll-divider"></div>
-            <h3 class="ll-interest-title">Like what you see?</h3>
-            <p class="ll-interest-sub">A licensed agent <strong id="interest-state-label">in your state</strong> can lock in this rate, answer any questions, and walk you through next steps — at no cost and no obligation.</p>
-            <ul class="ll-interest-list">
-                <li><span class="check">✓</span> Free, no-obligation policy review</li>
-                <li><span class="check">✓</span> Licensed in your state, knows your local rates</li>
-                <li><span class="check">✓</span> Your number stays with us — never sold or shared</li>
-            </ul>
-            <button class="fex-submit" id="interest-yes-btn">Yes, Connect Me With An Agent</button>
-            <button type="button" class="btn-link-muted" id="interest-no-btn">Not right now — I'm just browsing</button>
-        </div>
+            <h3 class="ll-interest-title">Interested in this rate?</h3>
+            <p class="ll-interest-sub">If you'd like a licensed agent <strong id="interest-state-label">in your state</strong> to reach out and walk you through this coverage, check the box below. To prevent fraud and confirm it's your number, we'll send you a quick 6-digit code.</p>
 
-        <!-- 3. OTP verification (shown after user expresses interest) -->
-        <div id="otp-section" hidden>
-            <div class="ll-divider"></div>
-            <h3 class="ll-interest-title">One last step — verify your number</h3>
-            <p class="ll-subtitle">We just texted a 6-digit code to <strong id="otp-contact"></strong>. This confirms we have the right number for your agent to reach you.</p>
-            <input type="text" id="otp-code" maxlength="6" inputmode="numeric"
-                   style="width:100%;padding:16px;font-size:28px;text-align:center;letter-spacing:14px;font-family:'DM Serif Display',serif;border:1.5px solid #E5E1D6;border-radius:12px;margin:12px 0 14px;color:#1E2A5A;"
-                   placeholder="------">
-            <div id="otp-error" class="alert alert-error" hidden></div>
-            <button class="fex-submit" id="otp-verify-btn">Verify &amp; Connect Me</button>
-            <button class="btn btn-link" id="otp-resend-btn" style="display:block;margin:14px auto 0;color:#1E2A5A;">Resend code</button>
-        </div>
+            <div class="ll-consent-box" id="ll-consent-box">
+                <button type="button" class="ll-checkbox-row" id="interest-checkbox-btn" aria-checked="false" role="checkbox">
+                    <span class="ll-checkbox" id="interest-checkbox-square"></span>
+                    <span class="ll-checkbox-text">
+                        Yes, I consent to a licensed agent from LeadingLeads.co calling me at <strong id="interest-phone-display">my number</strong> to discuss this quote. No purchase obligation.
+                    </span>
+                </button>
 
-        <!-- 4. Final confirmation -->
-        <div id="success-section" hidden>
-            <div class="ll-divider"></div>
-            <div class="ll-success-check">✓</div>
-            <h3 class="ll-interest-title" style="text-align:center;">You're all set!</h3>
-            <p class="ll-subtitle" style="text-align:center;">A licensed agent will reach out within <strong>1 business day</strong> to finalize your coverage and answer any questions.</p>
-            <p style="text-align:center;color:#6B7280;font-size:13px;margin-top:18px;">Reference: <span id="success-ref" style="font-family:monospace;color:#1E2A5A;"></span></p>
+                <!-- OTP step — slides in below the consent box after user clicks the checkbox -->
+                <div id="otp-section" hidden>
+                    <div class="ll-otp-prompt">
+                        <span class="ll-step-pill">Step 2 of 2</span>
+                        <p>We just texted a 6-digit code to <strong id="otp-contact"></strong>. Enter it below to confirm and finish.</p>
+                    </div>
+                    <input type="text" id="otp-code" maxlength="6" inputmode="numeric"
+                           style="width:100%;padding:16px;font-size:28px;text-align:center;letter-spacing:14px;font-family:'DM Serif Display',serif;border:1.5px solid #E5E1D6;border-radius:12px;margin:12px 0 14px;color:#1E2A5A;"
+                           placeholder="------">
+                    <div id="otp-error" class="alert alert-error" hidden></div>
+                    <button class="fex-submit" id="otp-verify-btn">Confirm</button>
+                    <button class="btn btn-link" id="otp-resend-btn" style="display:block;margin:14px auto 0;color:#1E2A5A;">Resend code</button>
+                </div>
+
+                <!-- Success state — shown after OTP verifies, checkbox now ✓ -->
+                <div id="success-section" hidden>
+                    <div class="ll-verified-banner">
+                        <strong>You're all set.</strong> A licensed agent will reach out within <strong>1 business day</strong> to finalize your coverage.
+                    </div>
+                    <p style="text-align:center;color:#6B7280;font-size:12px;margin-top:14px;">Reference: <span id="success-ref" style="font-family:monospace;color:#1E2A5A;"></span></p>
+                </div>
+            </div>
+
+            <button type="button" class="btn-link-muted" id="interest-no-btn">No thanks, I'm just browsing the rates</button>
         </div>
     </section>
 
