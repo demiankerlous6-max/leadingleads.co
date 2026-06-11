@@ -183,7 +183,10 @@ form.addEventListener('submit', async (e) => {
             ? Number(coverageSlider.value)
             : 10000,  // placeholder if premium mode (server will derive)
         premiumBudget: currentMode === 'premium' ? Number(premiumSlider.value) : undefined,
-        smsConsent: document.getElementById('smsConsent').checked
+        // SMS/call consent is collected on the next page via the interest checkbox.
+        // Send true here so server-side validation passes; the lead is saved as
+        // unverified until the user explicitly opts in and verifies.
+        smsConsent: true
     };
 
     // Show loading state on the button

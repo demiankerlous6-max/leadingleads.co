@@ -223,6 +223,12 @@
             margin: 18px 0 0; padding: 12px 14px; background: #FAF6EE;
             border-radius: 10px; line-height: 1.5;
         }
+        .ll-form-footnote {
+            font-size: 12px; color: var(--ll-muted); line-height: 1.55;
+            margin: 18px 0 14px; text-align: center;
+        }
+        .ll-form-footnote a { color: var(--ll-navy); text-decoration: underline; }
+        .ll-form-footnote strong { color: var(--ll-navy); }
 
         /* Interest form (post-quote) */
         .ll-divider {
@@ -451,12 +457,7 @@
                 <input type="tel" id="phone" name="phone" required placeholder="+1 555-123-4567">
             </div>
 
-            <div class="fex-consent">
-                <label>
-                    <input type="checkbox" id="smsConsent" required>
-                    <span>I agree to receive a one-time SMS verification code from LeadingLeads.co. Message/data rates may apply. Reply STOP to opt out. See our <a href="/privacy.html" target="_blank">Privacy Policy</a> and <a href="/terms.html" target="_blank">Terms</a>.</span>
-                </label>
-            </div>
+            <p class="ll-form-footnote">By clicking <strong>Get My Estimate</strong> you agree to our <a href="/privacy.html" target="_blank">Privacy Policy</a> and <a href="/terms.html" target="_blank">Terms</a>. We will not text or call you unless you separately opt in on the next page.</p>
 
             <button type="submit" class="fex-submit">Get My Estimate</button>
         </form>
@@ -485,7 +486,7 @@
                 <button type="button" class="ll-checkbox-row" id="interest-checkbox-btn" aria-checked="false" role="checkbox">
                     <span class="ll-checkbox" id="interest-checkbox-square"></span>
                     <span class="ll-checkbox-text">
-                        Yes, I expressly consent to receive a phone call from a licensed insurance agent referred by LeadingLeads.co at <strong id="interest-phone-display">my number</strong> to discuss this estimate. I understand this consent is not a condition of purchase, and I can opt out at any time.
+                        Yes, I expressly consent to receive (1) a one-time SMS verification code, and (2) a follow-up phone call from a licensed insurance agent referred by LeadingLeads.co — both at <strong id="interest-phone-display">my number</strong> — to discuss this estimate. Message and data rates may apply. This consent is not a condition of purchase, and I can opt out at any time by replying STOP or emailing us.
                     </span>
                 </button>
 

@@ -318,7 +318,9 @@ function validateFEQuoteInput(data) {
     if (data.email) {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(data.email).trim())) push('email', 'Invalid email');
     }
-    if (data.smsConsent !== true && data.smsConsent !== 'on' && data.smsConsent !== 'true') push('smsConsent', 'You must agree to receive SMS to continue');
+    // SMS / call consent is collected separately on the results page via the
+    // interest checkbox. We don't require it at the estimate-form stage because
+    // no message is sent until the user opts in there.
     return { valid: errors.length === 0, errors, parsedAge: age };
 }
 
