@@ -20,9 +20,20 @@ const POLICY_LABELS = {
     'iul':       'Indexed Universal Life'
 };
 
+// Tracks whether the Google Sheets backend is healthy. If init fails or any
+// write fails, we flip this off and gracefully skip future writes so the site
+// keeps working without a database.
+let sheetsAvailable = false;
+
 async function initializeSchema() {
-    await initializeSheet();
-    console.log('[db] Google Sheets ready as the leads database.');
+    try {
+        await initializeSheet();
+        sheetsAvailable = true;
+        console.log('[db] Google Sheets ready as the leads database.');
+    } catch (err) {
+        sheetsAvailable = false;
+        throw err;
+    }
 }
 
 // Caches full quote details (annual, health class, BMI) for post-verify display
@@ -32,14 +43,19 @@ async function saveLead(lead) {
     const leadId = uuidv4();
     const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
 
+    // Always cache the quote details in memory — needed for post-verify display
     quoteCache.set(leadId, {
         name: fullName,
         monthlyPremium: lead.monthlyPremium,
         annualPremium: lead.annualPremium,
         healthClass: lead.healthClass || 'Standard',
         bmi: lead.bmi,
-        state: lead.state
+        state: lead.state,
+        phone: lead.phone || ''
     });
+
+    // Only try to write to Sheets if it's available
+    if (!sheetsAvailable) return leadId;
 
     const row = {
         leadId,
@@ -53,45 +69,78 @@ async function saveLead(lead) {
         quote: lead.monthlyPremium,
         verified: lead.verified ? 'Yes' : 'No'
     };
-    await appendRow(row);
+    try {
+        await appendRow(row);
+    } catch (err) {
+        console.warn('[db] saveLead: write failed —', err.message || err);
+        sheetsAvailable = false;
+    }
     return leadId;
 }
 
 async function updateLeadVerification(leadId, method) {
-    const row = await findRowByLeadId(leadId);
-    if (!row) return false;
-    await updateRowFields(row._rowNumber, { verified: 'Yes' });
-    return true;
+    if (!sheetsAvailable) return false;
+    try {
+        const row = await findRowByLeadId(leadId);
+        if (!row) return false;
+        await updateRowFields(row._rowNumber, { verified: 'Yes' });
+        return true;
+    } catch (err) {
+        console.warn('[db] updateLeadVerification: failed —', err.message || err);
+        sheetsAvailable = false;
+        return false;
+    }
 }
 
 async function getLeadById(leadId) {
+    // Always check the in-memory cache first — works with or without Sheets
     if (quoteCache.has(leadId)) {
         const cached = quoteCache.get(leadId);
-        const row = await findRowByLeadId(leadId);
-        if (row) {
-            const { _rowNumber, ...lead } = row;
-            return { ...lead, ...cached };
+        if (!sheetsAvailable) return { leadId, ...cached };
+        try {
+            const row = await findRowByLeadId(leadId);
+            if (row) {
+                const { _rowNumber, ...lead } = row;
+                return { ...lead, ...cached };
+            }
+        } catch (err) {
+            console.warn('[db] getLeadById: lookup failed —', err.message || err);
+            sheetsAvailable = false;
         }
         return { leadId, ...cached };
     }
-    const row = await findRowByLeadId(leadId);
-    if (!row) return null;
-    const { _rowNumber, ...lead } = row;
-    return {
-        ...lead,
-        monthlyPremium: Number(lead.quote || 0),
-        annualPremium: Number(lead.quote || 0) * 12,
-        healthClass: 'Standard',
-        bmi: 0
-    };
+    if (!sheetsAvailable) return null;
+    try {
+        const row = await findRowByLeadId(leadId);
+        if (!row) return null;
+        const { _rowNumber, ...lead } = row;
+        return {
+            ...lead,
+            monthlyPremium: Number(lead.quote || 0),
+            annualPremium: Number(lead.quote || 0) * 12,
+            healthClass: 'Standard',
+            bmi: 0
+        };
+    } catch (err) {
+        console.warn('[db] getLeadById: lookup failed —', err.message || err);
+        sheetsAvailable = false;
+        return null;
+    }
 }
 
 async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
-    const all = await getAllRows();
-    const filtered = verifiedOnly
-        ? all.filter(r => r.verified === true || r.verified === 'Yes')
-        : all;
-    return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
+    if (!sheetsAvailable) return [];
+    try {
+        const all = await getAllRows();
+        const filtered = verifiedOnly
+            ? all.filter(r => r.verified === true || r.verified === 'Yes')
+            : all;
+        return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
+    } catch (err) {
+        console.warn('[db] listLeads: failed —', err.message || err);
+        sheetsAvailable = false;
+        return [];
+    }
 }
 
 // =================== OTP (in-memory) ===================

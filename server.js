@@ -74,16 +74,18 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Start server
+// Start server — boot even if the Google Sheets DB is unreachable.
+// Quote, OTP, and the rest of the site still work; leads just won't be saved.
 (async () => {
     try {
         await initializeSchema();
-        app.listen(PORT, () => {
-            console.log(`\nLeadingLeads.co server running on http://localhost:${PORT}`);
-            console.log(`Database: Google Sheets (${process.env.GOOGLE_SHEETS_ID})`);
-        });
+        console.log(`Database: Google Sheets (${process.env.GOOGLE_SHEETS_ID})`);
     } catch (err) {
-        console.error('Failed to start server:', err);
-        process.exit(1);
+        console.warn('[db] Google Sheets unavailable — running without lead storage.');
+        console.warn('[db] Reason:', err.message || err);
+        // Site continues to start. Re-enable by fixing GOOGLE_SERVICE_ACCOUNT_JSON.
     }
+    app.listen(PORT, () => {
+        console.log(`\nLeadingLeads.co server running on http://localhost:${PORT}`);
+    });
 })();
