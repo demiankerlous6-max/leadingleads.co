@@ -219,12 +219,8 @@ form.addEventListener('submit', async (e) => {
         // Render the quote immediately — no verification yet
         if (json.quote) renderQuote(json.quote);
 
-        // Personalize the interest section with state name (if returned)
-        const stateLabel = document.getElementById('interest-state-label');
-        if (stateLabel && json.customer && json.customer.state) {
-            const stateName = (US_STATES.find(([code]) => code === json.customer.state) || [,''])[1];
-            stateLabel.textContent = stateName ? `licensed in ${stateName}` : 'in your state';
-        }
+        // (We previously displayed the user's state next to "licensed insurance agent"
+        // here, but that implied state-specific agent availability we can't guarantee.)
 
         // Show user's phone in the consent statement
         const phoneDisplay = document.getElementById('interest-phone-display');

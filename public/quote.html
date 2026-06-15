@@ -374,11 +374,11 @@
             <div class="fex-row">
                 <label for="coverageType">Coverage Type</label>
                 <select id="coverageType" name="coverageType">
-                    <option value="level">Level — best rates, day 1 coverage</option>
-                    <option value="graded-modified">Graded / Modified — health flags</option>
+                    <option value="level">Level — full benefit from day 1 (subject to underwriting)</option>
+                    <option value="graded-modified">Graded / Modified — for some health flags</option>
                     <option value="guaranteed">Guaranteed Issue — no health questions</option>
-                    <option value="limited-pay">Limited Pay — 10 years then paid up</option>
-                    <option value="spwl">SPWL — single premium, paid up day 1</option>
+                    <option value="limited-pay">Limited Pay — typically 10 years, then paid up</option>
+                    <option value="spwl">SPWL — single premium, paid up immediately</option>
                 </select>
             </div>
 
@@ -480,7 +480,7 @@
         <div id="interest-section" hidden>
             <div class="ll-divider"></div>
             <h3 class="ll-interest-title">Interested in this estimate?</h3>
-            <p class="ll-interest-sub">If you'd like a licensed insurance agent <strong id="interest-state-label">in your state</strong> to reach out and walk you through your options, check the box below. To confirm we have the right number, we'll send you a quick 6-digit code.</p>
+            <p class="ll-interest-sub">If you'd like a licensed insurance agent to reach out and walk you through your options, check the box below. To confirm we have the right number, we'll send you a quick 6-digit code.</p>
 
             <div class="ll-consent-box" id="ll-consent-box">
                 <button type="button" class="ll-checkbox-row" id="interest-checkbox-btn" aria-checked="false" role="checkbox">
@@ -507,7 +507,7 @@
                 <!-- Success state — shown after OTP verifies, checkbox now ✓ -->
                 <div id="success-section" hidden>
                     <div class="ll-verified-banner">
-                        <strong>You're all set.</strong> A licensed insurance agent will be in touch to discuss your options. Final coverage and pricing are subject to carrier underwriting.
+                        <strong>You're all set.</strong> Your request has been received. A licensed insurance agent may follow up with you to discuss your options. Final coverage and pricing depend on the carrier and underwriting.
                     </div>
                     <p style="text-align:center;color:#6B7280;font-size:12px;margin-top:14px;">Reference: <span id="success-ref" style="font-family:monospace;color:#1E2A5A;"></span></p>
                 </div>
