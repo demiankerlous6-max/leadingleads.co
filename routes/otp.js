@@ -43,15 +43,8 @@ router.post('/verify', async (req, res, next) => {
             return res.status(400).json(result);
         }
 
-        // Capture TCPA evidence at the verification moment.
-        // req.ip works correctly because server.js sets `trust proxy`.
-        const evidence = {
-            ip: req.ip || '',
-            userAgent: req.headers['user-agent'] || ''
-        };
-
         if (leadId) {
-            await updateLeadVerification(leadId, result.method, evidence);
+            await updateLeadVerification(leadId, result.method);
             const lead = await getLeadById(leadId);
             if (lead) {
                 return res.json({

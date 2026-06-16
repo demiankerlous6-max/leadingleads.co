@@ -8,7 +8,10 @@ const SHEET_ID = process.env.GOOGLE_SHEETS_ID;
 const SHEET_NAME = process.env.GOOGLE_SHEETS_TAB_NAME || 'Leads';
 const LOCAL_TIMEZONE = process.env.LOCAL_TIMEZONE || 'America/New_York';
 
-// 16-column schema. Order matches the header row the user pastes into Sheets.
+// 14-column schema. Order matches the header row the user pastes into Sheets.
+// To change a column: edit COLUMNS and HEADER_LABELS below, AND update the
+// sheet's row 1 in the same change. Both must always match exactly.
+// See SCHEMA.md at the repo root for the full change procedure.
 const COLUMNS = [
     'submittedAt',      // A: Submitted
     'name',             // B: Name
@@ -23,9 +26,7 @@ const COLUMNS = [
     'monthlyEstimate',  // K: Monthly Estimate
     'email',            // L: Email
     'consentVersion',   // M: Consent Version
-    'ipAddress',        // N: IP Address
-    'userAgent',        // O: Browser
-    'leadId'            // P: Lead ID
+    'leadId'            // N: Lead ID
 ];
 
 const HEADER_LABELS = {
@@ -42,8 +43,6 @@ const HEADER_LABELS = {
     monthlyEstimate:  'Monthly Estimate',
     email:            'Email',
     consentVersion:   'Consent Version',
-    ipAddress:        'IP Address',
-    userAgent:        'Browser',
     leadId:           'Lead ID'
 };
 

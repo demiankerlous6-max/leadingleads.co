@@ -65,8 +65,6 @@ async function saveLead(lead) {
         monthlyEstimate: lead.monthlyPremium,
         email: lead.email || '',
         consentVersion: '',
-        ipAddress: '',
-        userAgent: '',
         leadId
     };
     try {
@@ -79,8 +77,8 @@ async function saveLead(lead) {
 }
 
 // Called when OTP verification succeeds — stamps the lead row with proof
-// of consent + verification + IP + browser at that exact moment.
-async function updateLeadVerification(leadId, method, evidence = {}) {
+// of consent + verification at that exact moment.
+async function updateLeadVerification(leadId, method) {
     if (!sheetsAvailable) return false;
     try {
         const row = await findRowByLeadId(leadId);
@@ -89,9 +87,7 @@ async function updateLeadVerification(leadId, method, evidence = {}) {
             verified: 'Yes',
             consented: 'Yes',
             verifiedAt: new Date(),
-            consentVersion: CONSENT_VERSION,
-            ipAddress: evidence.ip || '',
-            userAgent: evidence.userAgent || ''
+            consentVersion: CONSENT_VERSION
         });
         return true;
     } catch (err) {
