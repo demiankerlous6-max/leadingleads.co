@@ -29,7 +29,8 @@ router.post('/send', async (req, res, next) => {
 });
 
 // POST /api/otp/verify  { contact, code, leadId }
-// On success, also returns the quote (which was withheld during initial submit).
+// On successful verification, stamps the lead row in Sheets with verified +
+// consented + IP + user-agent — the consent evidence captured at this moment.
 router.post('/verify', async (req, res, next) => {
     try {
         const { contact, code, leadId } = req.body;
@@ -42,9 +43,15 @@ router.post('/verify', async (req, res, next) => {
             return res.status(400).json(result);
         }
 
-        // Mark lead as verified and return the stored quote values
+        // Capture TCPA evidence at the verification moment.
+        // req.ip works correctly because server.js sets `trust proxy`.
+        const evidence = {
+            ip: req.ip || '',
+            userAgent: req.headers['user-agent'] || ''
+        };
+
         if (leadId) {
-            await updateLeadVerification(leadId, result.method);
+            await updateLeadVerification(leadId, result.method, evidence);
             const lead = await getLeadById(leadId);
             if (lead) {
                 return res.json({

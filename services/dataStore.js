@@ -11,18 +11,13 @@ const {
     COLUMNS
 } = require('./sheetsClient');
 
-const POLICY_LABELS = {
-    'term-10':   '10-Year Term',
-    'term-20':   '20-Year Term',
-    'term-30':   '30-Year Term',
-    'whole':     'Whole Life',
-    'universal': 'Universal Life',
-    'iul':       'Indexed Universal Life'
-};
+// Current consent text version. If the consent box wording changes, bump this
+// to 'v2-<date>'. Old verified rows keep their original version so you always
+// know exactly what each user agreed to.
+const CONSENT_VERSION = 'v1-2026-06-15';
 
-// Tracks whether the Google Sheets backend is healthy. If init fails or any
-// write fails, we flip this off and gracefully skip future writes so the site
-// keeps working without a database.
+// Tracks whether the Sheets backend is healthy. If init or any write fails,
+// we flip this off so the site keeps working without a database.
 let sheetsAvailable = false;
 
 async function initializeSchema() {
@@ -36,14 +31,14 @@ async function initializeSchema() {
     }
 }
 
-// Caches full quote details (annual, health class, BMI) for post-verify display
+// In-memory cache of quote details keyed by lead_id — used to repaint
+// the success page after verification even when Sheets is unreachable.
 const quoteCache = new Map();
 
 async function saveLead(lead) {
     const leadId = uuidv4();
     const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ');
 
-    // Always cache the quote details in memory — needed for post-verify display
     quoteCache.set(leadId, {
         name: fullName,
         monthlyPremium: lead.monthlyPremium,
@@ -54,20 +49,25 @@ async function saveLead(lead) {
         phone: lead.phone || ''
     });
 
-    // Only try to write to Sheets if it's available
     if (!sheetsAvailable) return leadId;
 
     const row = {
-        leadId,
         submittedAt: new Date(),
         name: fullName,
         phone: lead.phone || '',
-        email: lead.email || '',
-        dob: lead.dateOfBirth || '',
+        verified: 'No',
+        consented: 'No',
+        verifiedAt: '',
         state: (lead.state || '').toUpperCase(),
-        termPlan: POLICY_LABELS[lead.policyType] || lead.policyType || '',
-        quote: lead.monthlyPremium,
-        verified: lead.verified ? 'Yes' : 'No'
+        age: lead.age || '',
+        coverageType: lead.coverageType || lead.policyType || '',
+        coverageAmount: lead.coverageAmount || '',
+        monthlyEstimate: lead.monthlyPremium,
+        email: lead.email || '',
+        consentVersion: '',
+        ipAddress: '',
+        userAgent: '',
+        leadId
     };
     try {
         await appendRow(row);
@@ -78,12 +78,21 @@ async function saveLead(lead) {
     return leadId;
 }
 
-async function updateLeadVerification(leadId, method) {
+// Called when OTP verification succeeds — stamps the lead row with proof
+// of consent + verification + IP + browser at that exact moment.
+async function updateLeadVerification(leadId, method, evidence = {}) {
     if (!sheetsAvailable) return false;
     try {
         const row = await findRowByLeadId(leadId);
         if (!row) return false;
-        await updateRowFields(row._rowNumber, { verified: 'Yes' });
+        await updateRowFields(row._rowNumber, {
+            verified: 'Yes',
+            consented: 'Yes',
+            verifiedAt: new Date(),
+            consentVersion: CONSENT_VERSION,
+            ipAddress: evidence.ip || '',
+            userAgent: evidence.userAgent || ''
+        });
         return true;
     } catch (err) {
         console.warn('[db] updateLeadVerification: failed —', err.message || err);
@@ -93,7 +102,6 @@ async function updateLeadVerification(leadId, method) {
 }
 
 async function getLeadById(leadId) {
-    // Always check the in-memory cache first — works with or without Sheets
     if (quoteCache.has(leadId)) {
         const cached = quoteCache.get(leadId);
         if (!sheetsAvailable) return { leadId, ...cached };
@@ -116,8 +124,8 @@ async function getLeadById(leadId) {
         const { _rowNumber, ...lead } = row;
         return {
             ...lead,
-            monthlyPremium: Number(lead.quote || 0),
-            annualPremium: Number(lead.quote || 0) * 12,
+            monthlyPremium: Number(lead.monthlyEstimate || 0),
+            annualPremium: Number(lead.monthlyEstimate || 0) * 12,
             healthClass: 'Standard',
             bmi: 0
         };
@@ -133,7 +141,7 @@ async function listLeads({ limit = 100, verifiedOnly = false } = {}) {
     try {
         const all = await getAllRows();
         const filtered = verifiedOnly
-            ? all.filter(r => r.verified === true || r.verified === 'Yes')
+            ? all.filter(r => r.verified === 'Yes' || r.verified === true)
             : all;
         return filtered.slice(-limit).reverse().map(({ _rowNumber, ...r }) => r);
     } catch (err) {
@@ -193,7 +201,6 @@ async function markOtpVerified(otpId) {
     }
 }
 
-// =================== EXCEL EXPORT ===================
 async function exportLeadsToExcelBuffer({ verifiedOnly = false } = {}) {
     const leads = await listLeads({ limit: 100000, verifiedOnly });
     const wb = new ExcelJS.Workbook();
@@ -214,5 +221,6 @@ module.exports = {
     findActiveOtp,
     incrementOtpAttempts,
     markOtpVerified,
-    exportLeadsToExcelBuffer
+    exportLeadsToExcelBuffer,
+    CONSENT_VERSION
 };
