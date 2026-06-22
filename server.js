@@ -25,13 +25,13 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
+            // Meta Pixel loads from connect.facebook.net
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://connect.facebook.net"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            // Allow embedding the FEX Lite final-expense quoter from Insurance Toolkits
-            frameSrc: ["'self'", "https://insurancetoolkits.com", "https://app.insurancetoolkits.com"],
-            connectSrc: ["'self'", "https://insurancetoolkits.com", "https://app.insurancetoolkits.com"]
+            // Facebook tracking pixel image goes to www.facebook.com
+            imgSrc: ["'self'", "data:", "https:", "https://www.facebook.com"],
+            connectSrc: ["'self'", "https://connect.facebook.net", "https://www.facebook.com"]
         }
     }
 }));

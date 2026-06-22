@@ -216,6 +216,17 @@ form.addEventListener('submit', async (e) => {
         currentLeadId = json.leadId;
         currentContact = json.contact;
 
+        // Meta Pixel: fire Lead event on successful form submission.
+        // Guarded so missing pixel doesn't crash the page.
+        if (typeof fbq !== 'undefined' && json.quote) {
+            fbq('track', 'Lead', {
+                content_name: 'Final Expense Estimate',
+                content_category: 'final_expense_insurance',
+                value: Number(json.quote.monthlyPremium) || 0,
+                currency: 'USD'
+            });
+        }
+
         // Render the quote immediately — no verification yet
         if (json.quote) renderQuote(json.quote);
 
