@@ -1,5 +1,14 @@
 // Final Expense Quoter — quote-first flow, optional verification.
 
+// === Global Privacy Control (GPC) — universal opt-out signal ===
+// NJDPA and similar state laws require honoring this browser-level signal.
+// We detect it once at load, then if the user submits the form anyway we
+// auto-opt-out their phone number so it's never shared with marketing partners.
+const HAS_GPC = (typeof navigator !== 'undefined' && navigator.globalPrivacyControl === true);
+if (HAS_GPC) {
+    console.log('[gpc] Global Privacy Control detected — phone will auto-opt-out on submit.');
+}
+
 const US_STATES = [
     ['AL','Alabama'],['AK','Alaska'],['AZ','Arizona'],['AR','Arkansas'],['CA','California'],
     ['CO','Colorado'],['CT','Connecticut'],['DE','Delaware'],['FL','Florida'],['GA','Georgia'],
@@ -186,9 +195,7 @@ form.addEventListener('submit', async (e) => {
         // SMS/call consent is collected on the next page via the interest checkbox.
         // Send true here so server-side validation passes; the lead is saved as
         // unverified until the user explicitly opts in and verifies.
-        smsConsent: true,
-        // TrustedForm cert URL — auto-populated by trustedform.js if loaded
-        trustedFormCertUrl: (document.getElementById('xxTrustedFormCertUrl') || {}).value || ''
+        smsConsent: true
     };
 
     // Show loading state on the button
@@ -196,6 +203,18 @@ form.addEventListener('submit', async (e) => {
     const originalBtnText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Calculating...';
+
+    // If Global Privacy Control is set, opt-out this phone BEFORE we save the
+    // lead. The backend's opt-out check will then prevent any contact flow.
+    if (HAS_GPC && payload.phone) {
+        try {
+            await fetch('/api/opt-out', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: payload.phone, reason: 'GPC signal' })
+            });
+        } catch (e) { /* non-fatal; quote still shown */ }
+    }
 
     try {
         const res = await fetch('/api/quote', {

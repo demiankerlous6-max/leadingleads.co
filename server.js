@@ -27,13 +27,13 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            // Meta Pixel + TrustedForm cert script
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://connect.facebook.net", "https://api.trustedform.com"],
+            // Meta Pixel script source
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://connect.facebook.net"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            // FB pixel image + TrustedForm noscript image
-            imgSrc: ["'self'", "data:", "https:", "https://www.facebook.com", "https://api.trustedform.com"],
-            connectSrc: ["'self'", "https://connect.facebook.net", "https://www.facebook.com", "https://api.trustedform.com"]
+            // FB tracking pixel image
+            imgSrc: ["'self'", "data:", "https:", "https://www.facebook.com"],
+            connectSrc: ["'self'", "https://connect.facebook.net", "https://www.facebook.com"]
         }
     }
 }));

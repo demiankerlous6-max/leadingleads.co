@@ -23,13 +23,6 @@ router.post('/', async (req, res, next) => {
 
         const input = isFE ? sanitizeFEQuoteInput(req.body) : sanitizeQuoteInput(req.body);
 
-        // TrustedForm cert URL captured from the form. Logged for now; to actually
-        // retain certs beyond 72 hours, sign up at activeprospect.com and POST
-        // each cert URL to TrustedForm's claim API with your account key.
-        if (req.body && req.body.trustedFormCertUrl) {
-            console.log('[trustedform] cert URL for incoming lead:', req.body.trustedFormCertUrl);
-        }
-
         // Block opted-out phone numbers — show the estimate but do not save
         // and do not allow the consent/OTP flow on the next page to fire.
         if (isOptedOut(input.phone)) {

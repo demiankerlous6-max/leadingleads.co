@@ -16,8 +16,10 @@ const {
 // know exactly what each user agreed to.
 // Bump this whenever the consent box wording on /quote.html changes.
 // v1: initial consent text
-// v2: added explicit links to /partners.html (Who May Contact You) and /opt-out.html
-const CONSENT_VERSION = 'v2-2026-06-22';
+// v2: added explicit links to /partners.html and /opt-out.html
+// v3: full TCPA "express written consent" language; covers automated/prerecorded/AI voice;
+//     multi-party marketing partners; explicit Do Not Call override
+const CONSENT_VERSION = 'v3-2026-06-22';
 
 // Tracks whether the Sheets backend is healthy. If init or any write fails,
 // we flip this off so the site keeps working without a database.
