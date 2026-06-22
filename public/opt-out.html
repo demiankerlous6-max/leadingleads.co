@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Do Not Sell or Share — LeadingLeads.co</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init','986526477345442');fbq('track','PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=986526477345442&ev=PageView&noscript=1"/></noscript>
+    <!-- End Meta Pixel Code -->
+
+    <style>
+        .legal { max-width: 640px; margin: 0 auto; padding: 24px; }
+        .legal h2 { font-size: 22px; margin: 32px 0 12px; color: var(--dark); }
+        .legal p { color: var(--gray-700); line-height: 1.7; margin-bottom: 14px; }
+        .optout-form { background: #f8f9fb; border: 1px solid #e5e7ec; border-radius: 12px; padding: 28px 24px; margin: 22px 0; }
+        .optout-form label { display: block; font-weight: 600; color: var(--dark); margin-top: 14px; font-size: 14px; }
+        .optout-form input, .optout-form textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1.5px solid #d3d6dd; border-radius: 8px; font-size: 15px; font-family: inherit; margin-top: 6px; }
+        .optout-form textarea { min-height: 70px; resize: vertical; }
+        .optout-form .btn { margin-top: 22px; width: 100%; padding: 14px; font-size: 15px; }
+        .optout-success, .optout-error { padding: 16px 18px; border-radius: 10px; margin-top: 16px; font-size: 14px; line-height: 1.5; }
+        .optout-success { background: #ecfdf5; border: 1px solid #10b981; color: #065f46; }
+        .optout-error { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-inner">
+            <a href="/" class="logo">Leading<span>Leads</span>.co</a>
+            <nav>
+                <a href="/policies.html">Policies</a>
+                <a href="/quote.html" class="cta">Get a Quote</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>Do Not Sell or Share My Personal Information</h1>
+        </div>
+    </section>
+
+    <section class="legal">
+        <p>Under the California Consumer Privacy Act (CCPA) and similar laws in other states, you have the right to opt out of having your personal information shared with third parties. You can also use this form if you previously opted in to be contacted and now want to withdraw that consent.</p>
+
+        <p>Submit your phone number below. After submission, we will:</p>
+        <ul>
+            <li>Stop forwarding your contact information to any licensed insurance agent</li>
+            <li>Mark your record so future estimate requests using the same phone number do not generate outreach</li>
+            <li>Prevent any further SMS or calls associated with your number from our system</li>
+        </ul>
+
+        <div class="optout-form">
+            <form id="optout-form" novalidate>
+                <label for="optout-phone">Phone number to opt out</label>
+                <input type="tel" id="optout-phone" name="phone" required placeholder="+1 555-123-4567">
+
+                <label for="optout-reason">Reason (optional)</label>
+                <textarea id="optout-reason" name="reason" placeholder="Anything you'd like us to know"></textarea>
+
+                <button type="submit" class="btn btn-primary">Submit Opt-Out Request</button>
+
+                <div id="optout-result" hidden></div>
+            </form>
+        </div>
+
+        <p style="font-size:13px;color:var(--gray-500);margin-top:30px;">If you prefer, you can also reply <strong>STOP</strong> to any SMS we send you, or email <a href="mailto:demiankerlous6@gmail.com">demiankerlous6@gmail.com</a> with your opt-out request.</p>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 LeadingLeads.co &middot; Lead-generation service. Not a licensed insurance broker or carrier.</p>
+            <p style="margin-top:8px;"><a href="/privacy.html" style="color:#fff">Privacy</a> &middot; <a href="/terms.html" style="color:#fff">Terms</a> &middot; <a href="/partners.html" style="color:#fff">Partners</a> &middot; <a href="/opt-out.html" style="color:#fff">Do Not Sell</a> &middot; <a href="mailto:demiankerlous6@gmail.com" style="color:#fff">Contact</a></p>
+        </div>
+    </footer>
+
+    <script>
+    (function() {
+        const form = document.getElementById('optout-form');
+        const result = document.getElementById('optout-result');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            result.hidden = true;
+            const phone = document.getElementById('optout-phone').value.trim();
+            const reason = document.getElementById('optout-reason').value.trim();
+            const digits = phone.replace(/\D/g, '');
+            if (digits.length < 10 || digits.length > 11) {
+                result.hidden = false;
+                result.className = 'optout-error';
+                result.textContent = 'Please enter a valid US phone number (10 digits).';
+                return;
+            }
+            const btn = form.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+            try {
+                const res = await fetch('/api/opt-out', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, reason })
+                });
+                const json = await res.json();
+                result.hidden = false;
+                if (res.ok) {
+                    result.className = 'optout-success';
+                    result.innerHTML = '<strong>Request received.</strong> Your number has been added to our opt-out list. We will not contact you or share your information with any partner.';
+                    form.querySelector('input[type="tel"]').value = '';
+                    form.querySelector('textarea').value = '';
+                } else {
+                    result.className = 'optout-error';
+                    result.textContent = json.error || 'Something went wrong. Please try again or email us.';
+                }
+            } catch (err) {
+                result.hidden = false;
+                result.className = 'optout-error';
+                result.textContent = 'Network error. Please try again.';
+            }
+            btn.disabled = false;
+            btn.textContent = 'Submit Opt-Out Request';
+        });
+    })();
+    </script>
+</body>
+</html>

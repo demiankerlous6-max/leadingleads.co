@@ -14,7 +14,10 @@ const {
 // Current consent text version. If the consent box wording changes, bump this
 // to 'v2-<date>'. Old verified rows keep their original version so you always
 // know exactly what each user agreed to.
-const CONSENT_VERSION = 'v1-2026-06-15';
+// Bump this whenever the consent box wording on /quote.html changes.
+// v1: initial consent text
+// v2: added explicit links to /partners.html (Who May Contact You) and /opt-out.html
+const CONSENT_VERSION = 'v2-2026-06-22';
 
 // Tracks whether the Sheets backend is healthy. If init or any write fails,
 // we flip this off so the site keeps working without a database.

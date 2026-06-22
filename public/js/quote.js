@@ -186,7 +186,9 @@ form.addEventListener('submit', async (e) => {
         // SMS/call consent is collected on the next page via the interest checkbox.
         // Send true here so server-side validation passes; the lead is saved as
         // unverified until the user explicitly opts in and verifies.
-        smsConsent: true
+        smsConsent: true,
+        // TrustedForm cert URL — auto-populated by trustedform.js if loaded
+        trustedFormCertUrl: (document.getElementById('xxTrustedFormCertUrl') || {}).value || ''
     };
 
     // Show loading state on the button
@@ -217,8 +219,8 @@ form.addEventListener('submit', async (e) => {
         currentContact = json.contact;
 
         // Meta Pixel: fire Lead event on successful form submission.
-        // Guarded so missing pixel doesn't crash the page.
-        if (typeof fbq !== 'undefined' && json.quote) {
+        // Skip if the number is on the opt-out list (no real lead generated).
+        if (typeof fbq !== 'undefined' && json.quote && !json.optedOut) {
             fbq('track', 'Lead', {
                 content_name: 'Final Expense Estimate',
                 content_category: 'final_expense_insurance',
@@ -229,6 +231,24 @@ form.addEventListener('submit', async (e) => {
 
         // Render the quote immediately — no verification yet
         if (json.quote) renderQuote(json.quote);
+
+        // If this number is on the opt-out list, show the quote but skip the
+        // consent/OTP flow entirely. Show a small note instead.
+        if (json.optedOut) {
+            quoteSection.hidden = false;
+            interestSection.hidden = true;
+            otpSection.hidden = true;
+            successSection.hidden = true;
+            resultCard.hidden = false;
+            quoteCard.hidden = true;
+            const note = document.createElement('p');
+            note.className = 'll-disclaimer';
+            note.style.marginTop = '20px';
+            note.innerHTML = 'This number has previously opted out of contact. Your estimate is shown above for reference only — we will not call, text, or share your information.';
+            quoteSection.appendChild(note);
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
 
         // (We previously displayed the user's state next to "licensed insurance agent"
         // here, but that implied state-specific agent availability we can't guarantee.)

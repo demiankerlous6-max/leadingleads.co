@@ -10,7 +10,9 @@ const quoteRoutes = require('./routes/quote');
 const otpRoutes = require('./routes/otp');
 const leadRoutes = require('./routes/leads');
 const policyRoutes = require('./routes/policies');
+const optOutRoutes = require('./routes/optOut');
 const { initializeSchema } = require('./services/dataStore');
+const { loadOptOutsFromSheet } = require('./services/optOut');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,13 +27,13 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            // Meta Pixel loads from connect.facebook.net
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://connect.facebook.net"],
+            // Meta Pixel + TrustedForm cert script
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://connect.facebook.net", "https://api.trustedform.com"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            // Facebook tracking pixel image goes to www.facebook.com
-            imgSrc: ["'self'", "data:", "https:", "https://www.facebook.com"],
-            connectSrc: ["'self'", "https://connect.facebook.net", "https://www.facebook.com"]
+            // FB pixel image + TrustedForm noscript image
+            imgSrc: ["'self'", "data:", "https:", "https://www.facebook.com", "https://api.trustedform.com"],
+            connectSrc: ["'self'", "https://connect.facebook.net", "https://www.facebook.com", "https://api.trustedform.com"]
         }
     }
 }));
@@ -60,6 +62,7 @@ app.use('/api/quote', apiLimiter, quoteRoutes);
 app.use('/api/otp', otpLimiter, otpRoutes);
 app.use('/api/leads', apiLimiter, leadRoutes);
 app.use('/api/policies', policyRoutes);
+app.use('/api/opt-out', apiLimiter, optOutRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -85,6 +88,8 @@ app.use((err, req, res, next) => {
         console.warn('[db] Reason:', err.message || err);
         // Site continues to start. Re-enable by fixing GOOGLE_SERVICE_ACCOUNT_JSON.
     }
+    // Hydrate opt-out registry from sheet (best-effort; falls back to in-memory)
+    await loadOptOutsFromSheet();
     app.listen(PORT, () => {
         console.log(`\nLeadingLeads.co server running on http://localhost:${PORT}`);
     });

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sendOtp, verifyOtp } = require('../services/otpService');
 const { updateLeadVerification, getLeadById } = require('../services/dataStore');
+const { isOptedOut } = require('../services/optOut');
 
 // POST /api/otp/send  { contact, method }
 router.post('/send', async (req, res, next) => {
@@ -21,6 +22,11 @@ router.post('/send', async (req, res, next) => {
             }
         }
 
+        // Refuse to send a code to opted-out numbers
+        if (isOptedOut(contact)) {
+            return res.status(403).json({ error: 'This number has opted out of contact.' });
+        }
+
         const result = await sendOtp({ contact, method });
         res.json({ success: true, ...result });
     } catch (err) {
@@ -36,6 +42,11 @@ router.post('/verify', async (req, res, next) => {
         const { contact, code, leadId } = req.body;
         if (!contact || !code) {
             return res.status(400).json({ error: 'contact and code are required' });
+        }
+
+        // Even if they pass the OTP, refuse to mark as consented if opted-out
+        if (isOptedOut(contact)) {
+            return res.status(403).json({ error: 'This number has opted out of contact.' });
         }
 
         const result = await verifyOtp({ contact, code });
